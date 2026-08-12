@@ -1,0 +1,11 @@
+<Bindings>
+    <Binding name="PARCHMENTREADER_TOGGLE_READER" category="BINDING_HEADER_PARCHMENT_READER">
+        ParchmentReader_ToggleReader()
+    </Binding>
+    <Binding name="PARCHMENTREADER_TOGGLE_MINIMIZE" category="BINDING_HEADER_PARCHMENT_READER">
+        ParchmentReader_ToggleMinimize()
+    </Binding>
+    <Binding name="PARCHMENTREADER_QUICK_NOTE" category="BINDING_HEADER_PARCHMENT_READER">
+        ParchmentReader_OpenQuickNote()
+    </Binding>
+</Bindings>

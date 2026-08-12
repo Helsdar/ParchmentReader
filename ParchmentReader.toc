@@ -1,0 +1,31 @@
+## Interface: 120007
+## Title: Parchment Reader
+## IconTexture: Interface\Icons\INV_Misc_Book_09
+## Notes: An in-game library for reading, organizing, and bookmarking books and notes
+## Notes-deDE: Eine Bibliothek im Spiel zum Lesen, Organisieren und Markieren von Büchern und Notizen
+## Notes-frFR: Une bibliothèque en jeu pour lire, organiser et marquer des livres et des notes
+## Notes-ruRU: Внутриигровая библиотека для чтения, организации книг и заметок и создания закладок
+## Notes-esES: Una biblioteca dentro del juego para leer, organizar y marcar libros y notas
+## Notes-esMX: Una biblioteca dentro del juego para leer, organizar y marcar libros y notas
+## Author: Helsdar
+## Version: 1.0.0
+## X-License: All Rights Reserved
+## SavedVariables: ParchmentReaderDB
+
+Localization.lua
+Locales\enUS.lua
+Locales\deDE.lua
+Locales\frFR.lua
+Locales\ruRU.lua
+Locales\esES.lua
+Core.lua
+UI\Theme.lua
+UI\KeyboardHelp.lua
+UI\QuickNote.lua
+ReadingState.lua
+ReadingEngine.lua
+Books\BookList.lua
+UI\ReaderFrame.lua
+UI\BookEditor.lua
+UI\SettingsFrame.lua
+UI\DebugFrame.lua
