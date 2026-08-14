@@ -10,6 +10,7 @@
 ## Author: Helsdar
 ## Version: 1.0.0
 ## X-License: All Rights Reserved
+## X-Wago-ID: BKpglP6E
 ## SavedVariables: ParchmentReaderDB
 
 Localization.lua

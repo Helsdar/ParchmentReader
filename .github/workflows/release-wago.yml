@@ -1,0 +1,118 @@
+name: Release to Wago
+
+on:
+  push:
+    tags:
+      - "[0-9]*.[0-9]*.[0-9]*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-wago-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-wago:
+    name: Package and upload to Wago
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate release tag and manifests
+        shell: bash
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must use major.minor.patch format." >&2
+            exit 1
+          fi
+
+          mapfile -d '' tocs < <(
+            find . -maxdepth 1 -type f -name 'ParchmentReader*.toc' -print0
+          )
+          if (( ${#tocs[@]} != 4 )); then
+            echo "Expected exactly four ParchmentReader TOC files." >&2
+            exit 1
+          fi
+
+          for toc in "${tocs[@]}"; do
+            version=$(sed -n 's/^## Version:[[:space:]]*//p' "$toc")
+            if [[ "$version" != "$GITHUB_REF_NAME" ]]; then
+              echo "$toc declares version $version, expected $GITHUB_REF_NAME." >&2
+              exit 1
+            fi
+          done
+
+      - name: Build package without uploading
+        uses: BigWigsMods/packager@6d50adb6e8517eefef63f4afb16a6518166a6b28 # v2.5.1
+        with:
+          args: >-
+            -d -u -p 0 -w 0 -a BKpglP6E
+            -r "${{ runner.temp }}/wago-dry-run"
+            -n "{package-name}-{project-version}"
+          pandoc: false
+
+      - name: Verify sterile package
+        shell: bash
+        run: |
+          archive="$RUNNER_TEMP/wago-dry-run/ParchmentReader-$GITHUB_REF_NAME.zip"
+          mapfile -d '' archives < <(
+            find "$RUNNER_TEMP/wago-dry-run" -maxdepth 1 \
+              -type f -name '*.zip' -print0
+          )
+          if (( ${#archives[@]} != 1 )) || [[ "${archives[0]}" != "$archive" ]]; then
+            echo "Expected exactly one archive: $archive" >&2
+            exit 1
+          fi
+
+          expected="$RUNNER_TEMP/wago-expected-files.txt"
+          actual="$RUNNER_TEMP/wago-actual-files.txt"
+          {
+            printf '%s\n' \
+              ParchmentReader/Bindings.xml \
+              ParchmentReader/LICENSE \
+              ParchmentReader/ParchmentReader.toc \
+              ParchmentReader/ParchmentReader_Mists.toc \
+              ParchmentReader/ParchmentReader_TBC.toc \
+              ParchmentReader/ParchmentReader_Vanilla.toc
+            sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' \
+              ParchmentReader.toc \
+              | tr '\\' '/' \
+              | sed 's#^#ParchmentReader/#'
+          } | sort -u > "$expected"
+          unzip -Z1 "$archive" | sed '/\/$/d' | sort -u > "$actual"
+          diff --unified "$expected" "$actual"
+
+          while IFS= read -r archived; do
+            source=${archived#ParchmentReader/}
+            cmp --silent "$source" <(unzip -p "$archive" "$archived") || {
+              echo "Packaged content differs from source: $archived" >&2
+              exit 1
+            }
+          done < "$expected"
+
+      - name: Require Wago token
+        shell: bash
+        env:
+          WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+        run: |
+          if [[ -z "$WAGO_API_TOKEN" ]]; then
+            echo "Repository secret WAGO_API_TOKEN is not configured." >&2
+            exit 1
+          fi
+
+      - name: Package and upload only to Wago
+        uses: BigWigsMods/packager@6d50adb6e8517eefef63f4afb16a6518166a6b28 # v2.5.1
+        with:
+          args: >-
+            -u -p 0 -w 0 -a BKpglP6E
+            -n "{package-name}-{project-version}"
+          pandoc: false
+        env:
+          WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
