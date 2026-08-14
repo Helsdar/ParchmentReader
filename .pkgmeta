@@ -1,0 +1,11 @@
+package-as: ParchmentReader
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+ignore:
+  - .github
+  - .pkgmeta
+  - CHANGELOG.md
+  - README.md

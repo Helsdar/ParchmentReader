@@ -25,6 +25,12 @@ resizable window.
 All supported clients use the same download. World of Warcraft automatically
 selects the appropriate manifest.
 
+## Downloads
+
+- [CurseForge](https://www.curseforge.com/wow/addons/parchment-reader)
+- [Wago Addons](https://addons.wago.io/addons/parchment-reader)
+- [GitHub Releases](https://github.com/Helsdar/ParchmentReader/releases)
+
 ## Installation
 
 1. Extract the archive.
