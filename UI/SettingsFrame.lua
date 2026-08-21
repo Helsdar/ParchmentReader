@@ -109,7 +109,7 @@ function ParchmentReader:RegisterWoWSettingsCategory()
     notes:SetJustifyH("LEFT")
     notes:SetJustifyV("TOP")
     notes:SetWordWrap(true)
-    notes:SetText(GetAddonMetadata("Notes"))
+    notes:SetText(L["An in-game library for reading, organizing, and bookmarking books and notes"])
 
     local author = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     author:SetPoint("TOPLEFT", notes, "BOTTOMLEFT", 0, -20)
@@ -214,11 +214,11 @@ function ParchmentReader:CreateSettingsFrame()
         name = "ParchmentReaderSettingsFrame",
         title = L["Parchment Reader Settings"],
     })
-    frame:SetSize(440, 646)
+    frame:SetSize(440, 708)
     frame:SetPoint("CENTER")
     frame:EnableMouse(true)
     frame:EnableKeyboard(false)
-    frame:SetFrameStrata("DIALOG")
+    PRUI.SetAddonFrameLayer(frame, PRUI.ADDON_FRAME_LEVELS.WINDOW)
     frame:SetToplevel(true)
     self:RegisterEscapeClose("ParchmentReaderSettingsFrame")
 
@@ -237,6 +237,57 @@ function ParchmentReader:CreateSettingsFrame()
 
     local yOffset = -58
     local spacing = 62
+
+
+    local languageText = frame:CreateFontString(
+        nil, "OVERLAY", "GameFontNormalSmall")
+    languageText:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, yOffset)
+    languageText:SetText(L["Interface language:"])
+    PRUI.SetFontStringColor(languageText, Theme:Get("text", "secondary"))
+
+    StaticPopupDialogs["PARCHMENTREADER_RELOAD_LANGUAGE"] = {
+        text = L["Language choice saved.\n\nReload the interface now?"],
+        button1 = L["Reload UI"],
+        button2 = L["Later"],
+        OnAccept = ReloadUI,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+    }
+
+    local languageItems = {
+        {value = "auto", text = L["Auto — WoW client language"]},
+        {value = "enUS", text = L["English"]},
+        {value = "deDE", text = L["Deutsch"]},
+        {value = "frFR", text = L["Français"]},
+        {value = "esES", text = L["Español"]},
+        {value = "ruRU", text = L["Русский"]},
+    }
+    local languageDropdown = PRUI.Dropdown(frame, {
+        name = "ParchmentReaderLanguageDropdown",
+        popoverName = "ParchmentReaderLanguagePopover",
+        width = 300,
+        value = ParchmentReaderDB.interfaceLanguage or "auto",
+        items = languageItems,
+        onValueChanged = function(value)
+            value = ParchmentReader:NormalizeInterfaceLanguage(value)
+            if ParchmentReaderDB.interfaceLanguage == value then return end
+            ParchmentReaderDB.interfaceLanguage = value
+            StaticPopup_Show("PARCHMENTREADER_RELOAD_LANGUAGE")
+        end,
+    })
+    languageDropdown:SetPoint("TOPLEFT", languageText, "BOTTOMLEFT", 0, -5)
+    frame.languageDropdown = languageDropdown
+
+    local languageHint = frame:CreateFontString(
+        nil, "OVERLAY", "GameFontNormalSmall")
+    languageHint:SetPoint("LEFT", languageDropdown, "RIGHT", 8, 0)
+    languageHint:SetPoint("RIGHT", frame, "RIGHT", -20, 0)
+    languageHint:SetJustifyH("LEFT")
+    languageHint:SetText(L["Applied after reload."])
+    PRUI.SetFontStringColor(languageHint, Theme:Get("text", "muted"))
+
+    yOffset = yOffset - spacing
 
 
     local widthText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -264,6 +315,7 @@ function ParchmentReader:CreateSettingsFrame()
 
         if ParchmentReaderFrame then
             ParchmentReaderFrame:SetWidth(value)
+            ParchmentReader:SaveReaderPosition()
 
             ParchmentReader:UpdateContentWidth()
         end
@@ -297,6 +349,7 @@ function ParchmentReader:CreateSettingsFrame()
 
         if ParchmentReaderFrame then
             ParchmentReaderFrame:SetHeight(value)
+            ParchmentReader:SaveReaderPosition()
 
         end
     end)
@@ -397,7 +450,7 @@ function ParchmentReader:CreateSettingsFrame()
 
     local minimapCheck = PRUI.Checkbox(frame, L["Show minimap button"], {
         name = "ParchmentReaderMinimapCheck",
-        width = 220,
+        width = 208,
     })
     minimapCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, yOffset)
     minimapCheck:SetChecked(not ParchmentReaderDB.hide)
@@ -415,6 +468,24 @@ function ParchmentReader:CreateSettingsFrame()
             end
         end
     end)
+
+    local keyboardNavigationCheck = PRUI.Checkbox(
+        frame, L["Keyboard navigation"], {
+            name = "ParchmentReaderKeyboardNavigationCheck",
+            width = 184,
+        })
+    keyboardNavigationCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 236, yOffset)
+    keyboardNavigationCheck:SetChecked(
+        ParchmentReaderDB.readerKeyboardNavigation ~= false)
+    PRUI.RefreshCheckbox(keyboardNavigationCheck)
+    PRUI.AttachTooltip(
+        keyboardNavigationCheck,
+        L["Activate: click the page.\nExit: click elsewhere or press Esc."])
+    keyboardNavigationCheck:HookScript("OnClick", function(self)
+        ParchmentReader:SetReaderKeyboardNavigationEnabled(
+            self:GetChecked() == true)
+    end)
+    frame.keyboardNavigationCheck = keyboardNavigationCheck
 
     local shortcutsText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     shortcutsText:SetPoint("TOPLEFT", minimapCheck, "BOTTOMLEFT", 0, -22)
@@ -554,13 +625,25 @@ function ParchmentReader:CreateSettingsFrame()
 
             ParchmentReaderDB.windowWidth = metrics.defaultWidth
             ParchmentReaderDB.windowHeight = metrics.defaultHeight
+            ParchmentReaderDB.windowX = 0
+            ParchmentReaderDB.windowY = 0
             ParchmentReaderDB.fontSize = 14
             ParchmentReaderDB.fontName = "ChatFontNormal"
             ParchmentReaderDB.hide = false
             ParchmentReaderDB.minimapAngle = 315
             ParchmentReaderDB.sidebarCollapsed = false
             ParchmentReaderDB.transparencyMode = "off"
+            ParchmentReaderDB.readerMinimized = false
+            ParchmentReader.readerMinimized = false
+            ParchmentReaderDB.readerPinned = false
+            ParchmentReaderDB.readerKeyboardNavigation = true
+            local reloadForLanguage = ParchmentReader.locale
+                ~= ParchmentReader:ResolveInterfaceLocale("auto")
+            ParchmentReaderDB.interfaceLanguage = "auto"
+            ParchmentReader:HideFloatingLauncher()
             ParchmentReader:ResetFloatingLauncherSettings()
+            ParchmentReader:RefreshReaderPinState()
+            ParchmentReader:RefreshEscapeCloseRegistration()
             ParchmentReader:ClearAddonBinding(READER_BINDING, true)
             ParchmentReader:ClearAddonBinding(MINIMIZE_BINDING, true)
             ParchmentReader:ClearAddonBinding(QUICK_NOTE_BINDING, true)
@@ -573,12 +656,18 @@ function ParchmentReader:CreateSettingsFrame()
             transparencyDropdown:SetValue("off", true)
             minimapCheck:SetChecked(true)
             PRUI.RefreshCheckbox(minimapCheck)
+            keyboardNavigationCheck:SetChecked(true)
+            PRUI.RefreshCheckbox(keyboardNavigationCheck)
+            languageDropdown:SetValue("auto", true)
 
 
             if ParchmentReaderFrame then
                 ParchmentReaderFrame:SetWidth(metrics.defaultWidth)
                 ParchmentReaderFrame:SetHeight(metrics.defaultHeight)
                 ParchmentReader:ApplySidebarState(false)
+                ParchmentReaderDB.windowX = 0
+                ParchmentReaderDB.windowY = 0
+                ParchmentReader:ApplyReaderPosition()
             end
 
             if ParchmentReader.minimapBtn then
@@ -588,6 +677,11 @@ function ParchmentReader:CreateSettingsFrame()
 
             ParchmentReader:UpdateFont()
             ParchmentReader:SetReaderTransparencyMode("off")
+            ParchmentReader:SetReaderKeyboardNavigationEnabled(true)
+
+            if reloadForLanguage then
+                StaticPopup_Show("PARCHMENTREADER_RELOAD_LANGUAGE")
+            end
 
         end,
         timeout = 0,

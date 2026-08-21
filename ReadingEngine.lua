@@ -85,6 +85,20 @@ StaticPopupDialogs[GO_TO_END_POPUP] = {
     hideOnEscape = true,
 }
 
+local function RefreshJumpPopupLocalization()
+    local beginningPopup = StaticPopupDialogs[RETURN_TO_BEGINNING_POPUP]
+    beginningPopup.text =
+        L["Go to the beginning?\n\nYour saved reading position will move to the start."]
+    beginningPopup.button1 = L["Go to Beginning"]
+    beginningPopup.button2 = L["Cancel"]
+
+    local endPopup = StaticPopupDialogs[GO_TO_END_POPUP]
+    endPopup.text =
+        L["Go to the end?\n\nYour saved reading position will move to the end."]
+    endPopup.button1 = L["Go to End"]
+    endPopup.button2 = L["Cancel"]
+end
+
 local function Clamp(value, minimum, maximum)
     return math.max(minimum, math.min(value, maximum))
 end
@@ -796,6 +810,7 @@ function ParchmentReader:RequestReturnToBeginning()
     popup = self.goToEndPopup
     if popup and popup:IsShown() then return true end
 
+    RefreshJumpPopupLocalization()
     self.returnToBeginningPopup = StaticPopup_Show(
         RETURN_TO_BEGINNING_POPUP, nil, nil, {bookKey = bookKey})
     return self.returnToBeginningPopup ~= nil
@@ -833,6 +848,7 @@ function ParchmentReader:RequestGoToEnd()
     popup = self.returnToBeginningPopup
     if popup and popup:IsShown() then return true end
 
+    RefreshJumpPopupLocalization()
     self.goToEndPopup = StaticPopup_Show(
         GO_TO_END_POPUP, nil, nil, {bookKey = bookKey})
     return self.goToEndPopup ~= nil

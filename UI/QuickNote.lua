@@ -135,7 +135,7 @@ function ParchmentReader:CreateQuickNoteFrame()
     frame:SetSize(420, 340)
     frame:SetPoint("CENTER")
     frame:EnableMouse(true)
-    frame:SetFrameStrata("HIGH")
+    PRUI.SetAddonFrameLayer(frame, PRUI.ADDON_FRAME_LEVELS.WINDOW)
     UpdateQuickNoteFrameLevel(frame)
     self:RegisterEscapeClose("ParchmentReaderQuickNoteFrame")
 

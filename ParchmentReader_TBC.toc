@@ -8,7 +8,7 @@
 ## Notes-esES: Una biblioteca dentro del juego para leer, organizar y marcar libros y notas
 ## Notes-esMX: Una biblioteca dentro del juego para leer, organizar y marcar libros y notas
 ## Author: Helsdar
-## Version: 1.0.0
+## Version: 1.1.0
 ## X-License: All Rights Reserved
 ## X-Wago-ID: BKpglP6E
 ## SavedVariables: ParchmentReaderDB

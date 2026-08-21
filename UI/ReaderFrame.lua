@@ -14,6 +14,14 @@ local BOOKMARK_POPOVER_MAX_WIDTH = 340
 local BOOKMARK_POPOVER_HEADER_HEIGHT = 38
 local BOOKMARK_POPOVER_FOOTER_HEIGHT = 38
 local BOOKMARK_POPOVER_MARGIN = 6
+local READER_FOCUS_MODIFIER_KEYS = {
+    LALT = true,
+    LCTRL = true,
+    LSHIFT = true,
+    RALT = true,
+    RCTRL = true,
+    RSHIFT = true,
+}
 local SEARCH_CASE_FOLD = {
     ["А"] = "а", ["Б"] = "б", ["В"] = "в", ["Г"] = "г",
     ["Д"] = "д", ["Е"] = "е", ["Ё"] = "ё", ["Ж"] = "ж",
@@ -45,6 +53,18 @@ end
 
 local function SetFontStringColor(fontString, color)
     fontString:SetTextColor(color[1], color[2], color[3], color[4])
+end
+
+local function SetTextureColor(texture, color)
+    texture:SetVertexColor(color[1], color[2], color[3], color[4])
+end
+
+local function RefreshPinButtonColor(button)
+    PRUI.SetButtonTextColor(
+        button,
+        ParchmentReader:IsReaderPinned()
+            and Theme:Get("accent", "gold")
+            or nil)
 end
 
 local function NormalizeSearchText(value)
@@ -105,7 +125,7 @@ local function GetCollectionNameDialog()
     })
     dialog:SetSize(320, 150)
     dialog:SetPoint("CENTER")
-    dialog:SetFrameStrata("DIALOG")
+    PRUI.SetAddonFrameLayer(dialog, PRUI.ADDON_FRAME_LEVELS.MODAL)
     dialog:SetClampedToScreen(true)
     ParchmentReader:RegisterEscapeClose("ParchmentReaderCollectionNameDialog")
 
@@ -212,7 +232,7 @@ local function GetDeleteCollectionDialog()
     })
     dialog:SetSize(440, 174)
     dialog:SetPoint("CENTER")
-    dialog:SetFrameStrata("DIALOG")
+    PRUI.SetAddonFrameLayer(dialog, PRUI.ADDON_FRAME_LEVELS.MODAL)
     dialog:SetClampedToScreen(true)
     ParchmentReader:RegisterEscapeClose("ParchmentReaderDeleteCollectionDialog")
 
@@ -299,7 +319,7 @@ local function GetCollectionContextMenu()
         shadow = true,
     })
     menu:SetSize(226, 56)
-    menu:SetFrameStrata("TOOLTIP")
+    PRUI.SetAddonFrameLayer(menu, PRUI.ADDON_FRAME_LEVELS.POPOVER)
     menu:SetClampedToScreen(true)
     menu:EnableMouse(true)
     ParchmentReader:RegisterEscapeClose("ParchmentReaderCollectionContextMenu")
@@ -432,7 +452,7 @@ local function CreateCollectionPopover(readerFrame)
         shadow = true,
     })
     popover:SetWidth(224)
-    popover:SetFrameStrata("TOOLTIP")
+    PRUI.SetAddonFrameLayer(popover, PRUI.ADDON_FRAME_LEVELS.POPOVER)
     popover:SetClampedToScreen(true)
     popover:EnableMouse(true)
     popover:EnableMouseWheel(true)
@@ -684,7 +704,9 @@ local function GetBookMovePopover()
         shadow = true,
     })
     popover:SetWidth(240)
-    popover:SetFrameStrata("TOOLTIP")
+    PRUI.SetAddonFrameLayer(
+        popover,
+        PRUI.ADDON_FRAME_LEVELS.POPOVER + 10)
     popover:SetClampedToScreen(true)
     popover:EnableMouse(true)
     popover:EnableMouseWheel(true)
@@ -800,7 +822,7 @@ local function GetBookContextMenu()
         shadow = true,
     })
     menu:SetSize(206, 56)
-    menu:SetFrameStrata("TOOLTIP")
+    PRUI.SetAddonFrameLayer(menu, PRUI.ADDON_FRAME_LEVELS.POPOVER)
     menu:SetClampedToScreen(true)
     menu:EnableMouse(true)
     ParchmentReader:RegisterEscapeClose("ParchmentReaderBookContextMenu")
@@ -885,12 +907,25 @@ end
 local function ConfigureFrameKeyboard(frame)
     frame:RegisterEvent("PLAYER_REGEN_DISABLED")
     frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    frame:RegisterEvent("DISPLAY_SIZE_CHANGED")
+    frame:RegisterEvent("UI_SCALE_CHANGED")
     frame:SetScript("OnEvent", function(readerFrame, event)
         if event == "PLAYER_REGEN_DISABLED" then
-            readerFrame:EnableKeyboard(false)
+            ParchmentReader:SetReaderKeyboardFocus(false)
         elseif event == "PLAYER_REGEN_ENABLED" then
             readerFrame:SetPropagateKeyboardInput(true)
-            readerFrame:EnableKeyboard(true)
+            readerFrame:EnableKeyboard(false)
+            readerFrame.readerKeyboardFocused = false
+            ParchmentReader:RefreshReaderKeyboardFocusVisual()
+        elseif event == "GLOBAL_MOUSE_DOWN" then
+            if readerFrame.readerKeyboardFocused
+                and (not readerFrame.contentScroll
+                    or not readerFrame.contentScroll:IsMouseOver())
+            then
+                ParchmentReader:SetReaderKeyboardFocus(false)
+            end
+        elseif event == "DISPLAY_SIZE_CHANGED" or event == "UI_SCALE_CHANGED" then
+            ParchmentReader:ApplyReaderPosition()
         end
     end)
 
@@ -898,7 +933,7 @@ local function ConfigureFrameKeyboard(frame)
         frame:EnableKeyboard(false)
     else
         frame:SetPropagateKeyboardInput(true)
-        frame:EnableKeyboard(true)
+        frame:EnableKeyboard(false)
     end
 
     frame:SetScript("OnKeyDown", function(readerFrame, key)
@@ -906,12 +941,28 @@ local function ConfigureFrameKeyboard(frame)
             readerFrame:EnableKeyboard(false)
             return
         end
-        if _G.GetCurrentKeyBoardFocus and _G.GetCurrentKeyBoardFocus() then
+        if not readerFrame.readerKeyboardFocused
+            or ParchmentReaderDB.readerKeyboardNavigation == false
+        then
             readerFrame:SetPropagateKeyboardInput(true)
             return
         end
+        if _G.GetCurrentKeyBoardFocus and _G.GetCurrentKeyBoardFocus() then
+            ParchmentReader:SetReaderKeyboardFocus(false)
+            return
+        end
+        if key == "ESCAPE" then
+            ParchmentReader:SetReaderKeyboardFocus(false, true)
+            return
+        end
         local handled = ParchmentReader:HandleReaderKey(key)
-        readerFrame:SetPropagateKeyboardInput(not handled)
+        if handled then
+            readerFrame:SetPropagateKeyboardInput(false)
+        elseif READER_FOCUS_MODIFIER_KEYS[key] then
+            readerFrame:SetPropagateKeyboardInput(true)
+        else
+            ParchmentReader:SetReaderKeyboardFocus(false)
+        end
     end)
 end
 
@@ -919,6 +970,7 @@ local function FinishReaderResize(frame)
     frame.readerResizeActive = false
     frame:StopMovingOrSizing()
     ParchmentReader:UpdateReaderResizeBounds()
+    ParchmentReader:SaveReaderPosition()
     ParchmentReader:UpdateContentWidth()
 end
 
@@ -1507,12 +1559,80 @@ local READER_PROGRESS_IDLE_HEIGHT = 4
 local READER_PROGRESS_HOVER_HEIGHT = 6
 local READER_PROGRESS_HIT_HEIGHT = 12
 
+function ParchmentReader:RefreshReaderKeyboardFocusVisual()
+    local frame = ParchmentReaderFrame
+    if not frame or not frame.contentSurface then return end
+
+    local focused = frame.readerKeyboardFocused == true
+    PRUI.SetBorderColor(
+        frame.contentSurface,
+        focused
+            and Theme:Get("accent", "goldDim")
+            or Theme:Get("border", "subtle"))
+
+    local borderAlpha = focused and 1
+        or (frame.readerBackgroundTransparent and TRANSPARENT_BORDER_ALPHA or 1)
+    for _, texture in pairs(frame.contentSurface.pruiBorder or {}) do
+        texture:SetAlpha(borderAlpha)
+    end
+end
+
+function ParchmentReader:SetReaderKeyboardFocus(focused, consumeCurrentKey)
+    local frame = ParchmentReaderFrame
+    if not frame then return end
+
+    local shouldFocus = focused == true
+        and ParchmentReaderDB.readerKeyboardNavigation ~= false
+        and frame:IsShown()
+        and self.currentBook ~= nil
+        and self.readerLayoutMetrics ~= nil
+        and not InCombatLockdown()
+
+    frame.readerKeyboardFocused = shouldFocus
+    if shouldFocus then
+        frame:RegisterEvent("GLOBAL_MOUSE_DOWN")
+    else
+        frame:UnregisterEvent("GLOBAL_MOUSE_DOWN")
+    end
+
+    if InCombatLockdown() then
+        frame:EnableKeyboard(false)
+    elseif consumeCurrentKey and not shouldFocus then
+        frame:SetPropagateKeyboardInput(false)
+        frame:EnableKeyboard(false)
+        C_Timer.After(0, function()
+            if not frame.readerKeyboardFocused and not InCombatLockdown() then
+                frame:SetPropagateKeyboardInput(true)
+            end
+        end)
+    else
+        frame:SetPropagateKeyboardInput(true)
+        frame:EnableKeyboard(shouldFocus)
+    end
+    self:RefreshReaderKeyboardFocusVisual()
+end
+
+function ParchmentReader:SetReaderKeyboardNavigationEnabled(enabled)
+    ParchmentReaderDB.readerKeyboardNavigation = enabled == true
+    if not ParchmentReaderDB.readerKeyboardNavigation then
+        self:SetReaderKeyboardFocus(false)
+    else
+        self:RefreshReaderKeyboardFocusVisual()
+    end
+end
+
 local function SetReaderSurfaceTransparency(surface, transparent)
     if not surface then return end
 
     local backgroundAlpha = transparent and TRANSPARENT_BACKGROUND_ALPHA or 1
     local borderAlpha = transparent and TRANSPARENT_BORDER_ALPHA or 1
     local shadowAlpha = transparent and TRANSPARENT_SHADOW_ALPHA or 1
+    if ParchmentReaderFrame
+        and surface == ParchmentReaderFrame.contentSurface
+        and ParchmentReaderFrame.readerKeyboardFocused
+    then
+        borderAlpha = 1
+    end
 
     if surface.pruiBackground then
         surface.pruiBackground:SetAlpha(backgroundAlpha)
@@ -1657,7 +1777,12 @@ local function IsShownAndMouseOver(region)
 end
 
 local function IsReaderInteractionActive(frame)
-    if frame:IsMouseOver() or frame.readerResizeActive then return true end
+    if frame:IsMouseOver()
+        or frame.readerResizeActive
+        or frame.readerKeyboardFocused
+    then
+        return true
+    end
 
     return IsShownAndMouseOver(frame.collectionPopover)
         or IsShownAndMouseOver(frame.bookmarkPopover)
@@ -1693,6 +1818,62 @@ end
 
 local FLOATING_LAUNCHER_SIZE = 42
 local FLOATING_LAUNCHER_MARGIN = 8
+local READER_SCREEN_MARGIN = 8
+
+local function RoundPosition(value)
+    if value < 0 then
+        return math.ceil(value - 0.5)
+    end
+    return math.floor(value + 0.5)
+end
+
+local function ClampReaderPosition(frame, x, y)
+    local parentWidth = UIParent:GetWidth() or 0
+    local parentHeight = UIParent:GetHeight() or 0
+    local frameWidth = frame:GetWidth() or 0
+    local frameHeight = frame:GetHeight() or 0
+    local horizontalLimit = math.max(
+        0,
+        parentWidth / 2 - frameWidth / 2 - READER_SCREEN_MARGIN)
+    local verticalLimit = math.max(
+        0,
+        parentHeight / 2 - frameHeight / 2 - READER_SCREEN_MARGIN)
+    return Clamp(x, -horizontalLimit, horizontalLimit),
+        Clamp(y, -verticalLimit, verticalLimit)
+end
+
+function ParchmentReader:ApplyReaderPosition()
+    local frame = ParchmentReaderFrame
+    if not frame then return end
+
+    local x = tonumber(ParchmentReaderDB.windowX) or 0
+    local y = tonumber(ParchmentReaderDB.windowY) or 0
+    x, y = ClampReaderPosition(frame, x, y)
+    x = RoundPosition(x)
+    y = RoundPosition(y)
+    ParchmentReaderDB.windowX = x
+    ParchmentReaderDB.windowY = y
+
+    frame:ClearAllPoints()
+    frame:SetPoint("CENTER", UIParent, "CENTER", x, y)
+end
+
+function ParchmentReader:SaveReaderPosition()
+    local frame = ParchmentReaderFrame
+    if not frame then return end
+
+    local frameX, frameY = frame:GetCenter()
+    local parentX, parentY = UIParent:GetCenter()
+    if not frameX or not frameY or not parentX or not parentY then return end
+
+    local x, y = ClampReaderPosition(
+        frame,
+        frameX - parentX,
+        frameY - parentY)
+    ParchmentReaderDB.windowX = RoundPosition(x)
+    ParchmentReaderDB.windowY = RoundPosition(y)
+    self:ApplyReaderPosition()
+end
 
 local function ClampFloatingLauncherPosition(x, y)
     local parentWidth = UIParent:GetWidth() or 0
@@ -1720,7 +1901,7 @@ local function CreateFloatingLauncherMenu(launcher)
         shadow = true,
     })
     menu:SetSize(226, 82)
-    menu:SetFrameStrata("TOOLTIP")
+    PRUI.SetAddonFrameLayer(menu, PRUI.ADDON_FRAME_LEVELS.POPOVER)
     menu:SetClampedToScreen(true)
     menu:EnableMouse(true)
     menu.owner = launcher.button
@@ -1817,7 +1998,7 @@ function ParchmentReader:CreateFloatingLauncher()
         shadow = true,
     })
     launcher:SetSize(FLOATING_LAUNCHER_SIZE, FLOATING_LAUNCHER_SIZE)
-    launcher:SetFrameStrata("HIGH")
+    PRUI.SetAddonFrameLayer(launcher, PRUI.ADDON_FRAME_LEVELS.READER)
     launcher:SetClampedToScreen(true)
     launcher:SetMovable(true)
 
@@ -1900,6 +2081,21 @@ function ParchmentReader:HideFloatingLauncher()
     end
 end
 
+function ParchmentReader:RefreshReaderPinState()
+    local button = ParchmentReaderFrame and ParchmentReaderFrame.pinButton
+    if not button then return end
+
+    local pinned = self:IsReaderPinned()
+    button.tooltipText = pinned
+        and L["Unpin Reader"]
+        or L["Pin Reader"]
+    PRUI.SetButtonSelected(button, pinned)
+    RefreshPinButtonColor(button)
+    if ParchmentReaderFrame.resizeHandle then
+        ParchmentReaderFrame.resizeHandle:SetShown(not pinned)
+    end
+end
+
 function ParchmentReader:CreateReaderFrame()
     local metrics = Theme.metrics
     local minWidth, minHeight = self:GetReaderMinimumSize()
@@ -1920,9 +2116,9 @@ function ParchmentReader:CreateReaderFrame()
         shadow = true,
     })
     frame:SetSize(width, height)
-    frame:SetPoint("CENTER")
     frame:SetClampedToScreen(true)
-    frame:SetFrameStrata("HIGH")
+    self:ApplyReaderPosition()
+    PRUI.SetAddonFrameLayer(frame, PRUI.ADDON_FRAME_LEVELS.READER)
     frame:SetResizable(true)
     if frame.SetResizeBounds then
         frame:SetResizeBounds(
@@ -1942,19 +2138,47 @@ function ParchmentReader:CreateReaderFrame()
     topbar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1)
     topbar:SetHeight(metrics.topbarHeight)
     frame.topbar = topbar
-    PRUI.MakeMovable(frame, topbar)
+    PRUI.MakeMovable(frame, topbar, function()
+        return not ParchmentReader:IsReaderPinned()
+    end)
+    topbar:HookScript("OnDragStop", function()
+        ParchmentReader:SaveReaderPosition()
+    end)
 
-    local brandIcon = topbar:CreateTexture(nil, "ARTWORK")
-    brandIcon:SetSize(15, 15)
-    brandIcon:SetPoint("LEFT", topbar, "LEFT", 9, 0)
+    local brandSlot = CreateFrame("Frame", nil, topbar)
+    brandSlot:SetSize(20, 24)
+    brandSlot:SetPoint("LEFT", topbar, "LEFT", 4, 0)
+
+    local brandIcon = brandSlot:CreateTexture(nil, "ARTWORK")
+    brandIcon:SetSize(14, 14)
+    brandIcon:SetPoint("CENTER")
     brandIcon:SetTexture("Interface\\Icons\\INV_Misc_Book_09")
+    brandIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     local gold = Theme:Get("accent", "gold")
     brandIcon:SetVertexColor(gold[1], gold[2], gold[3], gold[4])
 
     local addonLabel = topbar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    addonLabel:SetPoint("LEFT", brandIcon, "RIGHT", 6, 0)
+    addonLabel:SetPoint("LEFT", brandSlot, "RIGHT", 3, 0)
     addonLabel:SetText(L["Parchment Reader"])
     SetFontStringColor(addonLabel, Theme:Get("text", "secondary"))
+
+    local pinButton = PRUI.IconButton(
+        topbar,
+        "Interface\\AddOns\\ParchmentReader\\Assets\\Pin",
+        nil,
+        {
+            width = 24,
+            height = 24,
+            iconSize = 16,
+        })
+    pinButton:SetPoint("LEFT", addonLabel, "RIGHT", 7, 0)
+    pinButton:SetScript("OnClick", function()
+        ParchmentReader:ToggleReaderPinned()
+    end)
+    PRUI.AttachTooltip(pinButton, function(button)
+        return button.tooltipText
+    end)
+    frame.pinButton = pinButton
 
     local closeButton = PRUI.IconButton(topbar, nil, L["Close"], {
         width = 24,
@@ -2016,14 +2240,15 @@ function ParchmentReader:CreateReaderFrame()
     frame.helpButton = helpButton
 
     local titleArea = CreateFrame("Button", nil, topbar)
-    titleArea:SetPoint("CENTER", topbar, "CENTER", 0, 0)
     titleArea:SetHeight(metrics.topbarHeight - 4)
     titleArea:RegisterForDrag("LeftButton")
     titleArea:SetScript("OnDragStart", function()
+        if ParchmentReader:IsReaderPinned() then return end
         frame:StartMoving()
     end)
     titleArea:SetScript("OnDragStop", function()
         frame:StopMovingOrSizing()
+        ParchmentReader:SaveReaderPosition()
     end)
     frame.titleArea = titleArea
 
@@ -2365,6 +2590,12 @@ function ParchmentReader:CreateReaderFrame()
     frame.bookmarkPreview = bookmarkPreview
 
     frame.readerMessage:SetText(L["Select a book from the library."])
+    contentScroll:EnableMouse(true)
+    contentScroll:SetScript("OnMouseDown", function(_, button)
+        if button == "LeftButton" then
+            ParchmentReader:SetReaderKeyboardFocus(true)
+        end
+    end)
     contentScroll:SetScript("OnMouseWheel", function(_, delta)
         ParchmentReader:HandleReaderMouseWheel(delta)
     end)
@@ -2503,16 +2734,28 @@ function ParchmentReader:CreateReaderFrame()
         bookmarkButton,
     }
 
-    function frame:RefreshTitleAreaWidth(frameWidth)
-        frameWidth = tonumber(frameWidth) or self:GetWidth()
-        local reservedWidth = ParchmentReaderDB.sidebarCollapsed and 340 or 394
-        local availableWidth = frameWidth - reservedWidth
-        titleArea:SetWidth(math.max(1, availableWidth))
-        titleArea:SetShown(availableWidth > 0)
+    function frame:RefreshTopbarIdentityLayout(compact)
+        addonLabel:SetShown(not compact)
+        pinButton:ClearAllPoints()
+        pinButton:SetPoint(
+            "LEFT",
+            compact and brandSlot or addonLabel,
+            "RIGHT",
+            compact and 3 or 7,
+            0)
     end
 
-    frame:SetScript("OnSizeChanged", function(_, frameWidth)
-        frame:RefreshTitleAreaWidth(frameWidth)
+    function frame:RefreshTitleAreaLayout()
+        local rightControl = ParchmentReaderDB.sidebarCollapsed
+            and minimizeButton
+            or helpButton
+        titleArea:ClearAllPoints()
+        titleArea:SetPoint("LEFT", pinButton, "RIGHT", 8, 0)
+        titleArea:SetPoint("RIGHT", rightControl, "LEFT", -8, 0)
+        titleArea:Show()
+    end
+
+    frame:SetScript("OnSizeChanged", function()
         if frame.bookmarkPopover:IsShown() then
             for _, row in ipairs(frame.bookmarkPopover.rows) do
                 if row.renaming then
@@ -2524,6 +2767,7 @@ function ParchmentReader:CreateReaderFrame()
         end
     end)
     frame:HookScript("OnHide", function()
+        ParchmentReader:SetReaderKeyboardFocus(false)
         ParchmentReader:CancelReaderJumpRequests()
         searchBox:ClearFocus()
         if frame.readerResizeActive then
@@ -2532,6 +2776,7 @@ function ParchmentReader:CreateReaderFrame()
             frame:StopMovingOrSizing()
         end
         ParchmentReader:SyncReadingPosition()
+        ParchmentReader:SaveReaderPosition()
         ParchmentReader:StopReaderScrollAnimation()
         frame.collectionPopover:Hide()
         frame.bookmarkPopover:Hide()
@@ -2559,7 +2804,7 @@ function ParchmentReader:CreateReaderFrame()
         ParchmentReader:RefreshReaderTransparency()
     end)
 
-    frame:RefreshTitleAreaWidth(width)
+    self:RefreshReaderPinState()
     navigation:SetWidth(math.max(
         180,
         math.min(380, width - metrics.sidebarWidth - 68)))
@@ -2568,6 +2813,7 @@ function ParchmentReader:CreateReaderFrame()
     self:RefreshBookmarkControls()
     self:ApplySidebarState(ParchmentReaderDB.sidebarCollapsed)
     self:RefreshReaderTransparency()
+    self:RefreshReaderKeyboardFocusVisual()
     frame:Hide()
     return frame
 end
