@@ -1,19 +1,24 @@
 
 
 local L = ParchmentReader.L
-local READER_SHORTCUTS = {
-    {L["Up / Down"], L["Scroll three lines"]},
-    {L["Page Up / Page Down"], L["Scroll by one screen"]},
-    {L["Home / End"], L["Confirm jump to beginning / end"]},
-    {L["Esc"], L["Close the active window or popover"]},
-}
+local function GetReaderShortcuts()
+    return {
+        {L["Click page"], L["Focus reader navigation"]},
+        {L["Up / Down"], L["Scroll three lines"]},
+        {L["Page Up / Page Down"], L["Scroll by one screen"]},
+        {L["Home / End"], L["Confirm jump to beginning / end"]},
+        {L["Click elsewhere / Esc"], L["Return keyboard control to WoW"]},
+    }
+end
 
-local EDITOR_SHORTCUTS = {
-    {L["Arrow keys"], L["Move the text cursor"]},
-    {L["Mouse drag"], L["Select text directly"]},
-    {L["Shift + navigation"], L["Extend the text selection"]},
-    {L["Esc"], L["Leave the field; again requests close"]},
-}
+local function GetEditorShortcuts()
+    return {
+        {L["Arrow keys"], L["Move the text cursor"]},
+        {L["Mouse drag"], L["Select text directly"]},
+        {L["Shift + navigation"], L["Extend the text selection"]},
+        {L["Esc"], L["Leave the field; again requests close"]},
+    }
+end
 
 local function CreateShortcutSection(frame, titleText, shortcuts, topOffset)
     local Theme = ParchmentReader.Theme
@@ -38,7 +43,7 @@ local function CreateShortcutSection(frame, titleText, shortcuts, topOffset)
 
         local keyText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         keyText:SetPoint("LEFT", row, "LEFT", 9, 0)
-        keyText:SetWidth(142)
+        keyText:SetWidth(160)
         keyText:SetJustifyH("LEFT")
         keyText:SetText(shortcut[1])
         PRUI.SetFontStringColor(keyText, Theme:Get("text", "primary"))
@@ -62,15 +67,15 @@ function ParchmentReader:CreateKeyboardHelpFrame()
         name = "ParchmentReaderKeyboardHelpFrame",
         title = L["Keyboard Help"],
     })
-    frame:SetSize(430, 350)
+    frame:SetSize(430, 380)
     frame:SetPoint("CENTER")
-    frame:SetFrameStrata("DIALOG")
+    PRUI.SetAddonFrameLayer(frame, PRUI.ADDON_FRAME_LEVELS.WINDOW)
     frame:SetToplevel(true)
     frame:EnableMouse(true)
     self:RegisterEscapeClose("ParchmentReaderKeyboardHelpFrame")
 
-    CreateShortcutSection(frame, L["READER"], READER_SHORTCUTS, -47)
-    CreateShortcutSection(frame, L["EDITOR"], EDITOR_SHORTCUTS, -185)
+    CreateShortcutSection(frame, L["READER"], GetReaderShortcuts(), -47)
+    CreateShortcutSection(frame, L["EDITOR"], GetEditorShortcuts(), -211)
 
     local combatNote = frame:CreateFontString(
         nil, "OVERLAY", "GameFontNormalSmall")
@@ -78,7 +83,7 @@ function ParchmentReader:CreateKeyboardHelpFrame()
     combatNote:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -16, 11)
     combatNote:SetJustifyH("CENTER")
     combatNote:SetText(
-        L["Reader keys stay active here and pause only during combat."])
+        L["Keyboard navigation must be enabled in Settings and pauses during combat."])
     PRUI.SetFontStringColor(combatNote, Theme:Get("text", "muted"))
 
     frame:Hide()

@@ -13,10 +13,15 @@ ParchmentReader.DEFAULT_LAUNCHER_X = 320
 ParchmentReader.DEFAULT_LAUNCHER_Y = 0
 local L = ParchmentReader.L
 
-BINDING_HEADER_PARCHMENT_READER = L["Parchment Reader"]
-BINDING_NAME_PARCHMENTREADER_TOGGLE_READER = L["Show / Hide Reader"]
-BINDING_NAME_PARCHMENTREADER_TOGGLE_MINIMIZE = L["Minimize / Restore Reader"]
-BINDING_NAME_PARCHMENTREADER_QUICK_NOTE = L["Open Quick Note"]
+function ParchmentReader:RefreshLocalizedGlobals()
+    BINDING_HEADER_PARCHMENT_READER = L["Parchment Reader"]
+    BINDING_NAME_PARCHMENTREADER_TOGGLE_READER = L["Show / Hide Reader"]
+    BINDING_NAME_PARCHMENTREADER_TOGGLE_MINIMIZE =
+        L["Minimize / Restore Reader"]
+    BINDING_NAME_PARCHMENTREADER_QUICK_NOTE = L["Open Quick Note"]
+end
+
+ParchmentReader:RefreshLocalizedGlobals()
 
 local SEP = "\0"
 local LEGACY_BUILTIN_PREFIX = "builtin:"
@@ -45,6 +50,8 @@ local DEFAULTS = {
     hide            = false,
     windowWidth     = 760,
     windowHeight    = 520,
+    windowX         = 0,
+    windowY         = 0,
     minimapAngle    = 315,
     fontSize        = 14,
     fontName        = "ChatFontNormal",
@@ -53,6 +60,10 @@ local DEFAULTS = {
     floatingLauncherX = ParchmentReader.DEFAULT_LAUNCHER_X,
     floatingLauncherY = ParchmentReader.DEFAULT_LAUNCHER_Y,
     floatingLauncherLocked = false,
+    readerMinimized = false,
+    readerPinned    = false,
+    readerKeyboardNavigation = true,
+    interfaceLanguage = "auto",
 }
 
 local TRANSPARENCY_MODES = {
@@ -387,7 +398,9 @@ local function GetTopEscapeFrame()
     local topFrameOrder = -1
     for frameName, state in pairs(ParchmentReader.escapeCloseFrames or {}) do
         local frame = _G[frameName]
-        if frame and frame:IsShown() then
+        local readerPinned = frameName == "ParchmentReaderFrame"
+            and ParchmentReader:IsReaderPinned()
+        if frame and frame:IsShown() and not readerPinned then
             local strata = ESCAPE_STRATA_ORDER[frame:GetFrameStrata()] or 0
             local level = frame:GetFrameLevel() or 0
             local order = state.order or 0
@@ -405,6 +418,22 @@ local function GetTopEscapeFrame()
         end
     end
     return topFrame
+end
+
+function ParchmentReader:IsReaderPinned()
+    return ParchmentReaderDB and ParchmentReaderDB.readerPinned == true
+end
+
+function ParchmentReader:SetReaderPinned(pinned)
+    ParchmentReaderDB.readerPinned = pinned == true
+    if self.RefreshReaderPinState then
+        self:RefreshReaderPinState()
+    end
+    self:RefreshEscapeCloseRegistration()
+end
+
+function ParchmentReader:ToggleReaderPinned()
+    self:SetReaderPinned(not self:IsReaderPinned())
 end
 
 local function RemoveManagedEscapeFrames()
@@ -503,6 +532,7 @@ end
 
 function ParchmentReader:ShowReader()
     self.readerMinimized = false
+    ParchmentReaderDB.readerMinimized = false
     if self.HideFloatingLauncher then
         self:HideFloatingLauncher()
     end
@@ -516,6 +546,7 @@ end
 
 function ParchmentReader:CloseReader()
     self.readerMinimized = false
+    ParchmentReaderDB.readerMinimized = false
     if self.HideFloatingLauncher then
         self:HideFloatingLauncher()
     end
@@ -530,6 +561,7 @@ function ParchmentReader:MinimizeReader()
     end
 
     self.readerMinimized = true
+    ParchmentReaderDB.readerMinimized = true
     ParchmentReaderFrame:Hide()
     self:ShowFloatingLauncher()
 end
@@ -599,7 +631,19 @@ function ParchmentReader:UpdateReaderResizeBounds(compact)
         minHeight,
         math.min(math.floor(frame:GetHeight() + 0.5), metrics.maxHeight))
     if width ~= frame:GetWidth() or height ~= frame:GetHeight() then
+        local left = frame:GetLeft()
+        local top = frame:GetTop()
         frame:SetSize(width, height)
+        if left and top then
+
+
+
+            frame:ClearAllPoints()
+            frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+            if self.SaveReaderPosition then
+                self:SaveReaderPosition()
+            end
+        end
     end
 
     if frame.SetResizeBounds then
@@ -644,6 +688,7 @@ function ParchmentReader:ApplySidebarState(collapsed)
         frame.addBookBtn:Hide()
         frame.collapsedLibraryButton:Show()
         frame.collapsedQuickNoteButton:Show()
+        frame.pinButton:Show()
         frame.settingsButton:Hide()
         frame.helpButton:Hide()
         toggleBtn:SetText("»")
@@ -656,15 +701,19 @@ function ParchmentReader:ApplySidebarState(collapsed)
         frame.addBookBtn:Show()
         frame.collapsedLibraryButton:Hide()
         frame.collapsedQuickNoteButton:Hide()
+        frame.pinButton:Show()
         frame.settingsButton:Show()
         frame.helpButton:Show()
         toggleBtn:SetText(L["«  Compact Mode"])
         toggleBtn.tooltipText = L["Compact Mode — hide library"]
     end
 
+    if frame.RefreshTopbarIdentityLayout then
+        frame:RefreshTopbarIdentityLayout(ParchmentReaderDB.sidebarCollapsed)
+    end
     self:UpdateReaderResizeBounds(ParchmentReaderDB.sidebarCollapsed)
-    if frame.RefreshTitleAreaWidth then
-        frame:RefreshTitleAreaWidth()
+    if frame.RefreshTitleAreaLayout then
+        frame:RefreshTitleAreaLayout()
     end
     if self.RefreshCollectionSelector then
         self:RefreshCollectionSelector()
@@ -1047,6 +1096,7 @@ end
 local _boot = CreateFrame("Frame")
 _boot:RegisterEvent("ADDON_LOADED")
 _boot:RegisterEvent("PLAYER_ENTERING_WORLD")
+_boot:RegisterEvent("PLAYER_LOGOUT")
 
 _boot:SetScript("OnEvent", function(self, event, addonName)
 
@@ -1054,10 +1104,23 @@ _boot:SetScript("OnEvent", function(self, event, addonName)
 
         ParchmentReaderDB = ParchmentReaderDB or {}
         ApplyDefaults(ParchmentReaderDB)
+        ParchmentReaderDB.interfaceLanguage =
+            ParchmentReader:NormalizeInterfaceLanguage(
+                ParchmentReaderDB.interfaceLanguage)
+        ParchmentReader:SetInterfaceLanguage(
+            ParchmentReaderDB.interfaceLanguage)
+        ParchmentReader:RefreshLocalizedGlobals()
         ParchmentReaderDB.transparencyMode =
             ParchmentReader:NormalizeTransparencyMode(ParchmentReaderDB.transparencyMode)
         ParchmentReaderDB.floatingLauncherLocked =
             ParchmentReaderDB.floatingLauncherLocked == true
+        ParchmentReaderDB.readerMinimized =
+            ParchmentReaderDB.readerMinimized == true
+        ParchmentReaderDB.readerPinned =
+            ParchmentReaderDB.readerPinned == true
+        ParchmentReaderDB.readerKeyboardNavigation =
+            ParchmentReaderDB.readerKeyboardNavigation ~= false
+        ParchmentReader.readerMinimized = ParchmentReaderDB.readerMinimized
         ParchmentReaderDB.customBooks = ParchmentReaderDB.customBooks or {}
         ParchmentReaderDB.collections = ParchmentReaderDB.collections or {}
         ParchmentReaderDB.bookPages   = ParchmentReaderDB.bookPages   or {}
@@ -1105,7 +1168,24 @@ _boot:SetScript("OnEvent", function(self, event, addonName)
             ParchmentReader.minimapBtn:Show()
         end
 
+        if ParchmentReader.readerMinimized
+            and ParchmentReader.ShowFloatingLauncher
+        then
+            ParchmentReader:ShowFloatingLauncher()
+        elseif ParchmentReader:IsReaderPinned() then
+            ParchmentReader:ShowReader()
+        end
+
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+    end
+
+    if event == "PLAYER_LOGOUT" then
+        ParchmentReaderDB.readerMinimized =
+            ParchmentReader.readerMinimized == true
+        ParchmentReader:SyncReadingPosition()
+        if ParchmentReader.SaveReaderPosition then
+            ParchmentReader:SaveReaderPosition()
+        end
     end
 end)
 

@@ -85,7 +85,10 @@ function ParchmentReader:CreateDebugFrame()
     frame:SetSize(640, 520)
     frame:SetPoint("CENTER")
     frame:EnableMouse(true)
-    frame:SetFrameStrata("FULLSCREEN_DIALOG")
+    PRUI.SetAddonFrameLayer(
+        frame,
+        PRUI.ADDON_FRAME_LEVELS.DEBUG,
+        PRUI.ADDON_DEBUG_STRATA)
     self:RegisterEscapeClose("ParchmentReaderDebugFrame")
 
 
@@ -187,6 +190,10 @@ function ParchmentReader:UpdateDebugInfo()
 
         table.insert(info, "")
         table.insert(info, Colorize("|cFF00FF00", L["[Settings]"]))
+        table.insert(info, string.format(
+            L["Interface Language: %s; active locale: %s"],
+            tostring(ParchmentReaderDB.interfaceLanguage),
+            tostring(ParchmentReader.locale)))
         table.insert(info, string.format(
             L["Window Width: %s"], tostring(ParchmentReaderDB.windowWidth)))
         table.insert(info, string.format(

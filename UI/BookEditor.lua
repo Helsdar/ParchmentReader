@@ -130,7 +130,7 @@ function ParchmentReader:CreateBookEditorFrame()
     frame:SetSize(540, 500)
     frame:SetPoint("CENTER")
     frame:EnableMouse(true)
-    frame:SetFrameStrata("DIALOG")
+    PRUI.SetAddonFrameLayer(frame, PRUI.ADDON_FRAME_LEVELS.WINDOW)
     frame:SetToplevel(true)
     self:RegisterEscapeClose("ParchmentReaderEditorFrame")
 

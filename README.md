@@ -12,8 +12,13 @@ resizable window.
 - Add, rename, navigate, delete, and restore bookmarks.
 - Capture text quickly without leaving the game through Quick Note.
 - Use Compact Mode or minimize the reader to a movable floating icon.
+- Keep the Reader or minimized launcher in its saved screen position between
+  sessions, and pin the Reader to prevent accidental movement or resizing.
+- Enable keyboard navigation only when the book page has focus, leaving
+  gameplay keys available to WoW at other times.
 - Configure reader size, font, transparency, shortcuts, and minimap access.
-- Use the interface in English, German, French, Russian, or Spanish.
+- Choose the interface language independently of the WoW client: English,
+  German, French, Russian, or Spanish.
 
 ## Supported clients
 
@@ -55,6 +60,10 @@ the corresponding Classic client.
 - Drag the minimap icon to reposition it.
 - Use **+ Add Book** to create your first saved book.
 - Right-click a saved book for edit and move actions.
+- Click the book page before using keyboard navigation; click outside it or
+  press Escape to return keyboard control to WoW.
+- Use the Pin button in the Reader header to lock its position and size and
+  restore it after reloads or logins.
 - Open **Keyboard Help** in the reader or editor to see available shortcuts.
 
 ## Commands

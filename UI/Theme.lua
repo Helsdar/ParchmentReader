@@ -80,6 +80,24 @@ ParchmentReader.PRUI = PRUI
 local L = ParchmentReader.L
 local TOOLTIP_DELAY_SECONDS = 0.5
 
+
+
+
+PRUI.ADDON_FRAME_STRATA = "BACKGROUND"
+PRUI.ADDON_DEBUG_STRATA = "LOW"
+PRUI.ADDON_FRAME_LEVELS = {
+    READER = 10,
+    POPOVER = 30,
+    WINDOW = 50,
+    MODAL = 70,
+    DEBUG = 10,
+}
+
+function PRUI.SetAddonFrameLayer(frame, level, strata)
+    frame:SetFrameStrata(strata or PRUI.ADDON_FRAME_STRATA)
+    frame:SetFrameLevel(level or PRUI.ADDON_FRAME_LEVELS.READER)
+end
+
 function PRUI.SetFontStringColor(fontString, color)
     fontString:SetTextColor(color[1], color[2], color[3], color[4])
 end
@@ -361,11 +379,12 @@ function PRUI.AttachTooltip(frame, tooltip)
     frame:HookScript("OnHide", CancelTooltip)
 end
 
-function PRUI.MakeMovable(frame, handle)
+function PRUI.MakeMovable(frame, handle, canMove)
     frame:SetMovable(true)
     handle:EnableMouse(true)
     handle:RegisterForDrag("LeftButton")
     handle:SetScript("OnDragStart", function()
+        if canMove and not canMove() then return end
         frame:StartMoving()
     end)
     handle:SetScript("OnDragStop", function()
@@ -585,6 +604,26 @@ function PRUI.Checkbox(parent, text, options)
     return checkButton
 end
 
+local function GetDropdownOwnerRoot(dropdown)
+    local root = dropdown:GetParent() or UIParent
+    local ancestor = root:GetParent()
+    while ancestor and ancestor ~= UIParent do
+        root = ancestor
+        ancestor = ancestor:GetParent()
+    end
+    return root
+end
+
+local function GetDropdownPopoverLevel(dropdown)
+    local level = PRUI.ADDON_FRAME_LEVELS.POPOVER
+    local ancestor = dropdown
+    while ancestor and ancestor ~= UIParent do
+        level = math.max(level, ancestor:GetFrameLevel() or 0)
+        ancestor = ancestor:GetParent()
+    end
+    return level + 20
+end
+
 function PRUI.Dropdown(parent, options)
     options = options or {}
     local items = options.items or {}
@@ -603,13 +642,15 @@ function PRUI.Dropdown(parent, options)
     PRUI.SetFontStringColor(arrow, Theme:Get("accent", "gold"))
     dropdown.pruiArrow = arrow
 
-    local popover = PRUI.Panel(UIParent, {
+    local popover = PRUI.Panel(GetDropdownOwnerRoot(dropdown), {
         name = options.popoverName,
         color = Theme:Get("bg", "base"),
         shadow = true,
     })
     popover:SetSize(width, 10 + #items * rowHeight)
-    popover:SetFrameStrata("TOOLTIP")
+    PRUI.SetAddonFrameLayer(
+        popover,
+        GetDropdownPopoverLevel(dropdown))
     popover:SetClampedToScreen(true)
     popover:EnableMouse(true)
     popover.rows = {}
@@ -675,12 +716,25 @@ function PRUI.Dropdown(parent, options)
         end
         popover:SetWidth(button:GetWidth())
         button:RefreshRows()
+        PRUI.SetAddonFrameLayer(
+            popover,
+            GetDropdownPopoverLevel(button))
         popover:ClearAllPoints()
         popover:SetPoint("TOPLEFT", button, "BOTTOMLEFT", 0, -4)
         popover:Show()
     end)
 
     popover:SetScript("OnShow", function(self)
+        PRUI.SetAddonFrameLayer(
+            self,
+            GetDropdownPopoverLevel(dropdown))
+        C_Timer.After(0, function()
+            if self:IsShown() then
+                PRUI.SetAddonFrameLayer(
+                    self,
+                    GetDropdownPopoverLevel(dropdown))
+            end
+        end)
         self:RegisterEvent("GLOBAL_MOUSE_DOWN")
         PRUI.SetButtonSelected(dropdown, true)
     end)
