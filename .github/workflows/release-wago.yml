@@ -75,6 +75,7 @@ jobs:
           actual="$RUNNER_TEMP/wago-actual-files.txt"
           {
             printf '%s\n' \
+              ParchmentReader/Assets/Pin.tga \
               ParchmentReader/Bindings.xml \
               ParchmentReader/LICENSE \
               ParchmentReader/ParchmentReader.toc \
