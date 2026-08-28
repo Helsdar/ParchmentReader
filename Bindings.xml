@@ -2,6 +2,9 @@
     <Binding name="PARCHMENTREADER_TOGGLE_READER" category="BINDING_HEADER_PARCHMENT_READER">
         ParchmentReader_ToggleReader()
     </Binding>
+    <Binding name="PARCHMENTREADER_TOGGLE_COMPACT" category="BINDING_HEADER_PARCHMENT_READER">
+        ParchmentReader_ToggleCompact()
+    </Binding>
     <Binding name="PARCHMENTREADER_TOGGLE_MINIMIZE" category="BINDING_HEADER_PARCHMENT_READER">
         ParchmentReader_ToggleMinimize()
     </Binding>

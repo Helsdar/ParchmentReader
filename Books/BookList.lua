@@ -25,13 +25,13 @@ Choose Add Book at the bottom of the library to create a book. Give it a title, 
 
 Right-click any book for its actions. You can edit its title and content or move it to another collection. The Edit Book window also contains Delete. Deleting a book removes its saved reading position and bookmarks after confirmation.
 
-Use the search field to find words in titles or content. The collection selector can show every book or only the books in one collection. Collection actions let you create, rename, and delete collections without losing their books.
+Use the search field to find words in book titles or collection names. The collection selector can show every book or only the books in one collection. Collection actions let you create, rename, and delete collections without losing their books.
 
 QUICK NOTE
 
 Quick Note is a small writing window for capturing text without interrupting the Reader. Saved notes become ordinary books in the Notes collection and can then be edited, moved, or deleted like anything else.
 
-The Reader, Minimize / Restore, and Quick Note shortcuts can be assigned in the addon's Settings or in WoW's native keybinding interface.
+The Reader, Toggle Compact Mode, Minimize / Restore, and Quick Note shortcuts can be assigned in the addon's Settings or in WoW's native keybinding interface.
 
 WINDOW MODES
 
@@ -39,7 +39,7 @@ Compact Mode hides the library and leaves the reading area visible. Restore the 
 
 Minimize turns the Reader into a small floating parchment icon. Click the icon to restore the same window. Its menu can lock the icon in place after you position it.
 
-The Settings window controls Reader size, font, font size, transparency, the minimap icon, and shortcuts. Off uses the standard background. Always keeps the Reader transparent. Smart restores the background while you interact with the Reader and fades it again while it rests.
+The Settings window controls Reader size, font, font size, transparency, the minimap icon, and shortcuts. Off uses the standard background. Always keeps the Reader transparent. Smart restores the background while you interact with the Reader and fades it again while it rests. The optional combat setting forces transparency only while combat is active, then restores the selected mode.
 
 HELP AND RECOVERY
 

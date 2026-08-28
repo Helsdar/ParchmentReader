@@ -32,10 +32,11 @@ local SEARCH_CASE_FOLD = {
     ["Ч"] = "ч", ["Ш"] = "ш", ["Щ"] = "щ", ["Ъ"] = "ъ",
     ["Ы"] = "ы", ["Ь"] = "ь", ["Э"] = "э", ["Ю"] = "ю",
     ["Я"] = "я", ["À"] = "à", ["Á"] = "á", ["Â"] = "â",
+    ["Ã"] = "ã",
     ["Ä"] = "ä", ["Æ"] = "æ", ["Ç"] = "ç", ["É"] = "é",
     ["È"] = "è", ["Ê"] = "ê", ["Ë"] = "ë", ["Í"] = "í",
     ["Î"] = "î", ["Ï"] = "ï", ["Ñ"] = "ñ", ["Ó"] = "ó",
-    ["Ô"] = "ô", ["Ö"] = "ö", ["Œ"] = "œ", ["Ú"] = "ú",
+    ["Ô"] = "ô", ["Õ"] = "õ", ["Ö"] = "ö", ["Œ"] = "œ", ["Ú"] = "ú",
     ["Ù"] = "ù", ["Û"] = "û", ["Ü"] = "ü", ["Ÿ"] = "ÿ",
     ["ẞ"] = "ß",
 }
@@ -911,8 +912,12 @@ local function ConfigureFrameKeyboard(frame)
     frame:RegisterEvent("UI_SCALE_CHANGED")
     frame:SetScript("OnEvent", function(readerFrame, event)
         if event == "PLAYER_REGEN_DISABLED" then
+            readerFrame.readerInCombat = true
+            ParchmentReader:RefreshReaderTransparency()
             ParchmentReader:SetReaderKeyboardFocus(false)
         elseif event == "PLAYER_REGEN_ENABLED" then
+            readerFrame.readerInCombat = false
+            ParchmentReader:RefreshReaderTransparency()
             readerFrame:SetPropagateKeyboardInput(true)
             readerFrame:EnableKeyboard(false)
             readerFrame.readerKeyboardFocused = false
@@ -929,7 +934,8 @@ local function ConfigureFrameKeyboard(frame)
         end
     end)
 
-    if InCombatLockdown() then
+    frame.readerInCombat = InCombatLockdown() and true or false
+    if frame.readerInCombat then
         frame:EnableKeyboard(false)
     else
         frame:SetPropagateKeyboardInput(true)
@@ -1649,11 +1655,20 @@ local function SetReaderSurfaceTransparency(surface, transparent)
     end
 end
 
+local function CompareNormalizedBookTitles(
+    leftTitle, leftNormalized, rightTitle, rightNormalized)
+    if leftNormalized == rightNormalized then
+        return (leftTitle or "") < (rightTitle or "")
+    end
+    return leftNormalized < rightNormalized
+end
+
 function ParchmentReader:CompareBookTitles(leftTitle, rightTitle)
-    local left = NormalizeSearchText(leftTitle)
-    local right = NormalizeSearchText(rightTitle)
-    if left == right then return (leftTitle or "") < (rightTitle or "") end
-    return left < right
+    return CompareNormalizedBookTitles(
+        leftTitle,
+        NormalizeSearchText(leftTitle),
+        rightTitle,
+        NormalizeSearchText(rightTitle))
 end
 
 local function SetReaderControlTransparency(frame, transparent)
@@ -1796,7 +1811,9 @@ function ParchmentReader:RefreshReaderTransparency()
     if not frame or not frame.readerTransparencySurfaces then return end
 
     local mode = self:NormalizeTransparencyMode(ParchmentReaderDB.transparencyMode)
-    local transparent = mode == "always"
+    local combatOverride = ParchmentReaderDB.readerCombatTransparency == true
+        and frame.readerInCombat == true
+    local transparent = combatOverride or mode == "always"
         or (mode == "smart" and not IsReaderInteractionActive(frame))
     if frame.readerBackgroundTransparent == transparent then return end
 
@@ -1809,6 +1826,15 @@ end
 
 function ParchmentReader:SetReaderTransparencyMode(mode)
     ParchmentReaderDB.transparencyMode = self:NormalizeTransparencyMode(mode)
+    if ParchmentReaderFrame then
+        ParchmentReaderFrame.readerBackgroundTransparent = nil
+        ParchmentReaderFrame.readerTransparencyElapsed = 0
+        self:RefreshReaderTransparency()
+    end
+end
+
+function ParchmentReader:SetReaderCombatTransparencyEnabled(enabled)
+    ParchmentReaderDB.readerCombatTransparency = enabled == true
     if ParchmentReaderFrame then
         ParchmentReaderFrame.readerBackgroundTransparent = nil
         ParchmentReaderFrame.readerTransparencyElapsed = 0
@@ -1861,6 +1887,8 @@ end
 function ParchmentReader:SaveReaderPosition()
     local frame = ParchmentReaderFrame
     if not frame then return end
+
+    self:SaveReaderSize()
 
     local frameX, frameY = frame:GetCenter()
     local parentX, parentY = UIParent:GetCenter()
@@ -2099,12 +2127,18 @@ end
 function ParchmentReader:CreateReaderFrame()
     local metrics = Theme.metrics
     local minWidth, minHeight = self:GetReaderMinimumSize()
+    local modeWidth, modeHeight = self:GetSavedReaderSize(
+        ParchmentReaderDB.sidebarCollapsed == true)
     local width = Clamp(
-        tonumber(ParchmentReaderDB.windowWidth) or metrics.defaultWidth,
+        modeWidth
+            or tonumber(ParchmentReaderDB.windowWidth)
+            or metrics.defaultWidth,
         minWidth,
         metrics.maxWidth)
     local height = Clamp(
-        tonumber(ParchmentReaderDB.windowHeight) or metrics.defaultHeight,
+        modeHeight
+            or tonumber(ParchmentReaderDB.windowHeight)
+            or metrics.defaultHeight,
         minHeight,
         metrics.maxHeight)
     ParchmentReaderDB.windowWidth = width
@@ -2828,10 +2862,18 @@ function ParchmentReader:RefreshBookList()
 
     local sortedBooks = {}
     for bookKey, bookData in pairs(self.books) do
-        sortedBooks[#sortedBooks + 1] = {key = bookKey, data = bookData}
+        sortedBooks[#sortedBooks + 1] = {
+            key = bookKey,
+            data = bookData,
+            normalizedTitle = NormalizeSearchText(bookData.title),
+        }
     end
     table.sort(sortedBooks, function(a, b)
-        return ParchmentReader:CompareBookTitles(a.data.title, b.data.title)
+        return CompareNormalizedBookTitles(
+            a.data.title,
+            a.normalizedTitle,
+            b.data.title,
+            b.normalizedTitle)
     end)
 
     local searchTerms = GetSearchTerms(frame.searchBox and frame.searchBox:GetText())

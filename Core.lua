@@ -16,6 +16,7 @@ local L = ParchmentReader.L
 function ParchmentReader:RefreshLocalizedGlobals()
     BINDING_HEADER_PARCHMENT_READER = L["Parchment Reader"]
     BINDING_NAME_PARCHMENTREADER_TOGGLE_READER = L["Show / Hide Reader"]
+    BINDING_NAME_PARCHMENTREADER_TOGGLE_COMPACT = L["Toggle Compact Mode"]
     BINDING_NAME_PARCHMENTREADER_TOGGLE_MINIMIZE =
         L["Minimize / Restore Reader"]
     BINDING_NAME_PARCHMENTREADER_QUICK_NOTE = L["Open Quick Note"]
@@ -48,8 +49,8 @@ end
 
 local DEFAULTS = {
     hide            = false,
-    windowWidth     = 760,
-    windowHeight    = 520,
+    windowWidth     = 720,
+    windowHeight    = 480,
     windowX         = 0,
     windowY         = 0,
     minimapAngle    = 315,
@@ -57,6 +58,7 @@ local DEFAULTS = {
     fontName        = "ChatFontNormal",
     sidebarCollapsed = false,
     transparencyMode = "off",
+    readerCombatTransparency = false,
     floatingLauncherX = ParchmentReader.DEFAULT_LAUNCHER_X,
     floatingLauncherY = ParchmentReader.DEFAULT_LAUNCHER_Y,
     floatingLauncherLocked = false,
@@ -618,7 +620,39 @@ function ParchmentReader:GetReaderMinimumSize(compact)
     return metrics.minWidth, metrics.minHeight
 end
 
-function ParchmentReader:UpdateReaderResizeBounds(compact)
+function ParchmentReader:GetSavedReaderSize(compact)
+    if compact then
+        return tonumber(ParchmentReaderDB.compactWindowWidth),
+            tonumber(ParchmentReaderDB.compactWindowHeight)
+    end
+    return tonumber(ParchmentReaderDB.normalWindowWidth),
+        tonumber(ParchmentReaderDB.normalWindowHeight)
+end
+
+function ParchmentReader:SaveReaderSize(compact, width, height)
+    local frame = ParchmentReaderFrame
+    if not frame and (width == nil or height == nil) then return end
+
+    local useCompactSize = compact
+    if useCompactSize == nil then
+        useCompactSize = ParchmentReaderDB.sidebarCollapsed == true
+    end
+    width = math.floor((tonumber(width) or frame:GetWidth()) + 0.5)
+    height = math.floor((tonumber(height) or frame:GetHeight()) + 0.5)
+
+    ParchmentReaderDB.windowWidth = width
+    ParchmentReaderDB.windowHeight = height
+    if useCompactSize then
+        ParchmentReaderDB.compactWindowWidth = width
+        ParchmentReaderDB.compactWindowHeight = height
+    else
+        ParchmentReaderDB.normalWindowWidth = width
+        ParchmentReaderDB.normalWindowHeight = height
+    end
+end
+
+function ParchmentReader:UpdateReaderResizeBounds(
+    compact, preferredWidth, preferredHeight)
     local frame = ParchmentReaderFrame
     if not frame then return end
 
@@ -626,10 +660,14 @@ function ParchmentReader:UpdateReaderResizeBounds(compact)
     local minWidth, minHeight = self:GetReaderMinimumSize(compact)
     local width = math.max(
         minWidth,
-        math.min(math.floor(frame:GetWidth() + 0.5), metrics.maxWidth))
+        math.min(math.floor(
+            (tonumber(preferredWidth) or frame:GetWidth()) + 0.5),
+            metrics.maxWidth))
     local height = math.max(
         minHeight,
-        math.min(math.floor(frame:GetHeight() + 0.5), metrics.maxHeight))
+        math.min(math.floor(
+            (tonumber(preferredHeight) or frame:GetHeight()) + 0.5),
+            metrics.maxHeight))
     if width ~= frame:GetWidth() or height ~= frame:GetHeight() then
         local left = frame:GetLeft()
         local top = frame:GetTop()
@@ -653,8 +691,7 @@ function ParchmentReader:UpdateReaderResizeBounds(compact)
         frame:SetMaxResize(metrics.maxWidth, metrics.maxHeight)
     end
 
-    ParchmentReaderDB.windowWidth = width
-    ParchmentReaderDB.windowHeight = height
+    self:SaveReaderSize(compact, width, height)
     if self.SyncWindowSizeControls then
         self:SyncWindowSizeControls(width, height)
     end
@@ -667,6 +704,7 @@ function ParchmentReader:ApplySidebarState(collapsed)
     if wasCollapsed ~= (collapsed == true) then
         self:SyncReadingPosition()
         self:StopReaderScrollAnimation()
+        self:SaveReaderSize(wasCollapsed)
     end
     ParchmentReaderDB.sidebarCollapsed = collapsed == true
 
@@ -711,7 +749,15 @@ function ParchmentReader:ApplySidebarState(collapsed)
     if frame.RefreshTopbarIdentityLayout then
         frame:RefreshTopbarIdentityLayout(ParchmentReaderDB.sidebarCollapsed)
     end
-    self:UpdateReaderResizeBounds(ParchmentReaderDB.sidebarCollapsed)
+    local preferredWidth, preferredHeight
+    if wasCollapsed ~= ParchmentReaderDB.sidebarCollapsed then
+        preferredWidth, preferredHeight = self:GetSavedReaderSize(
+            ParchmentReaderDB.sidebarCollapsed)
+    end
+    self:UpdateReaderResizeBounds(
+        ParchmentReaderDB.sidebarCollapsed,
+        preferredWidth,
+        preferredHeight)
     if frame.RefreshTitleAreaLayout then
         frame:RefreshTitleAreaLayout()
     end
@@ -723,6 +769,19 @@ end
 
 function ParchmentReader:ToggleSidebar()
     self:ApplySidebarState(not ParchmentReaderDB.sidebarCollapsed)
+end
+
+function ParchmentReader:ToggleCompactMode()
+    if not ParchmentReaderFrame or not ParchmentReaderFrame:IsShown() then
+        return
+    end
+    self:ToggleSidebar()
+end
+
+function ParchmentReader_ToggleCompact()
+    if ParchmentReader then
+        ParchmentReader:ToggleCompactMode()
+    end
 end
 
 
@@ -1112,6 +1171,8 @@ _boot:SetScript("OnEvent", function(self, event, addonName)
         ParchmentReader:RefreshLocalizedGlobals()
         ParchmentReaderDB.transparencyMode =
             ParchmentReader:NormalizeTransparencyMode(ParchmentReaderDB.transparencyMode)
+        ParchmentReaderDB.readerCombatTransparency =
+            ParchmentReaderDB.readerCombatTransparency == true
         ParchmentReaderDB.floatingLauncherLocked =
             ParchmentReaderDB.floatingLauncherLocked == true
         ParchmentReaderDB.readerMinimized =

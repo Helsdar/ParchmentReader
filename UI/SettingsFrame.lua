@@ -1,6 +1,7 @@
 
 
 local READER_BINDING = "PARCHMENTREADER_TOGGLE_READER"
+local COMPACT_BINDING = "PARCHMENTREADER_TOGGLE_COMPACT"
 local MINIMIZE_BINDING = "PARCHMENTREADER_TOGGLE_MINIMIZE"
 local QUICK_NOTE_BINDING = "PARCHMENTREADER_QUICK_NOTE"
 local ADDON_NAME = "ParchmentReader"
@@ -157,6 +158,7 @@ end
 
 function ParchmentReader:RefreshAddonBindingControls()
     self:RefreshBindingControl(READER_BINDING)
+    self:RefreshBindingControl(COMPACT_BINDING)
     self:RefreshBindingControl(MINIMIZE_BINDING)
     self:RefreshBindingControl(QUICK_NOTE_BINDING)
 end
@@ -214,7 +216,7 @@ function ParchmentReader:CreateSettingsFrame()
         name = "ParchmentReaderSettingsFrame",
         title = L["Parchment Reader Settings"],
     })
-    frame:SetSize(440, 708)
+    frame:SetSize(440, 740)
     frame:SetPoint("CENTER")
     frame:EnableMouse(true)
     frame:EnableKeyboard(false)
@@ -261,6 +263,7 @@ function ParchmentReader:CreateSettingsFrame()
         {value = "deDE", text = L["Deutsch"]},
         {value = "frFR", text = L["Français"]},
         {value = "esES", text = L["Español"]},
+        {value = "ptBR", text = L["Português (Brasil)"]},
         {value = "ruRU", text = L["Русский"]},
     }
     local languageDropdown = PRUI.Dropdown(frame, {
@@ -447,6 +450,26 @@ function ParchmentReader:CreateSettingsFrame()
 
     yOffset = yOffset - 82
 
+    local combatTransparencyCheck = PRUI.Checkbox(
+        frame, L["Transparent background in combat"], {
+            name = "ParchmentReaderCombatTransparencyCheck",
+            width = 400,
+        })
+    combatTransparencyCheck:SetPoint(
+        "TOPLEFT", frame, "TOPLEFT", 20, yOffset)
+    combatTransparencyCheck:SetChecked(
+        ParchmentReaderDB.readerCombatTransparency == true)
+    PRUI.RefreshCheckbox(combatTransparencyCheck)
+    PRUI.AttachTooltip(
+        combatTransparencyCheck,
+        L["Combat forces transparency; leaving combat restores the selected mode."])
+    combatTransparencyCheck:HookScript("OnClick", function(self)
+        ParchmentReader:SetReaderCombatTransparencyEnabled(
+            PRUI.IsCheckboxChecked(self))
+    end)
+
+    yOffset = yOffset - 32
+
 
     local minimapCheck = PRUI.Checkbox(frame, L["Show minimap button"], {
         name = "ParchmentReaderMinimapCheck",
@@ -457,7 +480,7 @@ function ParchmentReader:CreateSettingsFrame()
     PRUI.RefreshCheckbox(minimapCheck)
 
     minimapCheck:HookScript("OnClick", function(self)
-        local checked = self:GetChecked()
+        local checked = PRUI.IsCheckboxChecked(self)
         ParchmentReaderDB.hide = not checked
 
         if ParchmentReader.minimapBtn then
@@ -483,12 +506,12 @@ function ParchmentReader:CreateSettingsFrame()
         L["Activate: click the page.\nExit: click elsewhere or press Esc."])
     keyboardNavigationCheck:HookScript("OnClick", function(self)
         ParchmentReader:SetReaderKeyboardNavigationEnabled(
-            self:GetChecked() == true)
+            PRUI.IsCheckboxChecked(self))
     end)
     frame.keyboardNavigationCheck = keyboardNavigationCheck
 
     local shortcutsText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    shortcutsText:SetPoint("TOPLEFT", minimapCheck, "BOTTOMLEFT", 0, -22)
+    shortcutsText:SetPoint("TOPLEFT", minimapCheck, "BOTTOMLEFT", 0, -18)
     shortcutsText:SetText(L["Shortcuts:"])
     PRUI.SetFontStringColor(shortcutsText, Theme:Get("text", "secondary"))
 
@@ -545,11 +568,13 @@ function ParchmentReader:CreateSettingsFrame()
     end
 
     local readerBindingRow = CreateBindingRow(
-        READER_BINDING, L["Reader:"], shortcutsText, -7)
+        READER_BINDING, L["Reader:"], shortcutsText, -5)
+    local compactBindingRow = CreateBindingRow(
+        COMPACT_BINDING, L["Compact:"], readerBindingRow, -4)
     local minimizeBindingRow = CreateBindingRow(
-        MINIMIZE_BINDING, L["Minimize:"], readerBindingRow, -6)
+        MINIMIZE_BINDING, L["Minimize:"], compactBindingRow, -4)
     local quickNoteBindingRow = CreateBindingRow(
-        QUICK_NOTE_BINDING, L["Quick Note:"], minimizeBindingRow, -6)
+        QUICK_NOTE_BINDING, L["Quick Note:"], minimizeBindingRow, -4)
 
     local bindingHint = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     bindingHint:SetPoint("TOPLEFT", quickNoteBindingRow, "BOTTOMLEFT", 0, -5)
@@ -623,16 +648,19 @@ function ParchmentReader:CreateSettingsFrame()
         button2 = L["Cancel"],
         OnAccept = function()
 
+            local resetFromCompact = ParchmentReaderDB.sidebarCollapsed == true
             ParchmentReaderDB.windowWidth = metrics.defaultWidth
             ParchmentReaderDB.windowHeight = metrics.defaultHeight
+            ParchmentReaderDB.normalWindowWidth = metrics.defaultWidth
+            ParchmentReaderDB.normalWindowHeight = metrics.defaultHeight
             ParchmentReaderDB.windowX = 0
             ParchmentReaderDB.windowY = 0
             ParchmentReaderDB.fontSize = 14
             ParchmentReaderDB.fontName = "ChatFontNormal"
             ParchmentReaderDB.hide = false
             ParchmentReaderDB.minimapAngle = 315
-            ParchmentReaderDB.sidebarCollapsed = false
             ParchmentReaderDB.transparencyMode = "off"
+            ParchmentReaderDB.readerCombatTransparency = false
             ParchmentReaderDB.readerMinimized = false
             ParchmentReader.readerMinimized = false
             ParchmentReaderDB.readerPinned = false
@@ -645,6 +673,7 @@ function ParchmentReader:CreateSettingsFrame()
             ParchmentReader:RefreshReaderPinState()
             ParchmentReader:RefreshEscapeCloseRegistration()
             ParchmentReader:ClearAddonBinding(READER_BINDING, true)
+            ParchmentReader:ClearAddonBinding(COMPACT_BINDING, true)
             ParchmentReader:ClearAddonBinding(MINIMIZE_BINDING, true)
             ParchmentReader:ClearAddonBinding(QUICK_NOTE_BINDING, true)
 
@@ -654,6 +683,8 @@ function ParchmentReader:CreateSettingsFrame()
             fontSizeSlider:SetValue(14)
             fontDropdown:SetValue("ChatFontNormal", true)
             transparencyDropdown:SetValue("off", true)
+            combatTransparencyCheck:SetChecked(false)
+            PRUI.RefreshCheckbox(combatTransparencyCheck)
             minimapCheck:SetChecked(true)
             PRUI.RefreshCheckbox(minimapCheck)
             keyboardNavigationCheck:SetChecked(true)
@@ -662,13 +693,24 @@ function ParchmentReader:CreateSettingsFrame()
 
 
             if ParchmentReaderFrame then
-                ParchmentReaderFrame:SetWidth(metrics.defaultWidth)
-                ParchmentReaderFrame:SetHeight(metrics.defaultHeight)
-                ParchmentReader:ApplySidebarState(false)
+                if resetFromCompact then
+                    ParchmentReader:ApplySidebarState(false)
+                else
+                    ParchmentReader:SyncReadingPosition()
+                    ParchmentReader:StopReaderScrollAnimation()
+                    ParchmentReader:UpdateReaderResizeBounds(
+                        false, metrics.defaultWidth, metrics.defaultHeight)
+                end
                 ParchmentReaderDB.windowX = 0
                 ParchmentReaderDB.windowY = 0
                 ParchmentReader:ApplyReaderPosition()
             end
+            ParchmentReaderDB.sidebarCollapsed = false
+
+
+
+            ParchmentReaderDB.compactWindowWidth = nil
+            ParchmentReaderDB.compactWindowHeight = nil
 
             if ParchmentReader.minimapBtn then
                 ParchmentReader.minimapBtn:Show()
@@ -677,6 +719,7 @@ function ParchmentReader:CreateSettingsFrame()
 
             ParchmentReader:UpdateFont()
             ParchmentReader:SetReaderTransparencyMode("off")
+            ParchmentReader:SetReaderCombatTransparencyEnabled(false)
             ParchmentReader:SetReaderKeyboardNavigationEnabled(true)
 
             if reloadForLanguage then

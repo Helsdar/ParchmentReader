@@ -47,14 +47,14 @@ local Theme = {
         contentInsetX = 16,
         contentInsetY = 12,
         shadowSize = 6,
-        minWidth = 480,
-        minHeight = 360,
+        minWidth = 460,
+        minHeight = 320,
         compactMinWidth = 320,
         compactMinHeight = 200,
         maxWidth = 1400,
         maxHeight = 900,
-        defaultWidth = 760,
-        defaultHeight = 520,
+        defaultWidth = 720,
+        defaultHeight = 480,
     },
 }
 
@@ -553,9 +553,13 @@ function PRUI.Slider(parent, options)
     return slider
 end
 
+function PRUI.IsCheckboxChecked(checkButton)
+    return checkButton:GetChecked() and true or false
+end
+
 function PRUI.RefreshCheckbox(checkButton)
-    local checked = checkButton:GetChecked()
-    checkButton.pruiCheck:SetShown(checked == true)
+    local checked = PRUI.IsCheckboxChecked(checkButton)
+    checkButton.pruiCheck:SetShown(checked)
     PRUI.SetBorderColor(
         checkButton.pruiBox,
         checked and Theme:Get("accent", "goldDim") or Theme:Get("border", "subtle"))

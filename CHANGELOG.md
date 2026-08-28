@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.0 — 2026-08-28
+
+- Reduced the default Reader size to `720x480` and the standard minimum to
+  `460x320`, while keeping the `320x200` Compact Mode minimum.
+- Normal and Compact Mode now remember their window sizes independently.
+- Added an assignable **Toggle Compact Mode** action to WoW Key Bindings and the
+  addon Settings window.
+- Added an optional **Transparent background in combat** setting that restores
+  the selected Off, Always, or Smart behavior when combat ends.
+- Added a complete Brazilian Portuguese (`ptBR`) interface localization, manual
+  language selection, automatic `ptBR` client detection, and localized AddOns
+  metadata.
+- Fixed Reset to Defaults so leaving Compact Mode synchronizes the current
+  reading position before restoring the standard layout.
+- Reduced repeated locale normalization while sorting large book libraries.
+
 ## 1.1.0 — 2026-08-22
 
 - Added Pin Reader to prevent accidental moving or resizing, keep the Reader

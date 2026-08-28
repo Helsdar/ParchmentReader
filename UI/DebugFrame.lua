@@ -209,6 +209,9 @@ function ParchmentReader:UpdateDebugInfo()
         table.insert(info, string.format(
             L["Transparency Mode: %s"],
             tostring(ParchmentReaderDB.transparencyMode)))
+        table.insert(info, string.format(
+            L["Combat Transparency: %s"],
+            tostring(ParchmentReaderDB.readerCombatTransparency)))
     end
 
 

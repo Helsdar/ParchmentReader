@@ -12,6 +12,7 @@ local supportedLocales = {
     deDE = true,
     frFR = true,
     esES = true,
+    ptBR = true,
     ruRU = true,
 }
 local clientLocale = GetLocale and GetLocale() or "enUS"
