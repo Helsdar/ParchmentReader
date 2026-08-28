@@ -7,8 +7,9 @@
 ## Notes-ruRU: Внутриигровая библиотека для чтения, организации книг и заметок и создания закладок
 ## Notes-esES: Una biblioteca dentro del juego para leer, organizar y marcar libros y notas
 ## Notes-esMX: Una biblioteca dentro del juego para leer, organizar y marcar libros y notas
+## Notes-ptBR: Uma biblioteca no jogo para ler, organizar e marcar livros e notas
 ## Author: Helsdar
-## Version: 1.1.0
+## Version: 1.2.0
 ## X-License: All Rights Reserved
 ## X-Wago-ID: BKpglP6E
 ## SavedVariables: ParchmentReaderDB
@@ -19,6 +20,7 @@ Locales\deDE.lua
 Locales\frFR.lua
 Locales\ruRU.lua
 Locales\esES.lua
+Locales\ptBR.lua
 Core.lua
 UI\Theme.lua
 UI\KeyboardHelp.lua

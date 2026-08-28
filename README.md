@@ -12,13 +12,15 @@ resizable window.
 - Add, rename, navigate, delete, and restore bookmarks.
 - Capture text quickly without leaving the game through Quick Note.
 - Use Compact Mode or minimize the reader to a movable floating icon.
+- Assign a shortcut that switches a visible Reader into or out of Compact Mode.
 - Keep the Reader or minimized launcher in its saved screen position between
   sessions, and pin the Reader to prevent accidental movement or resizing.
 - Enable keyboard navigation only when the book page has focus, leaving
   gameplay keys available to WoW at other times.
-- Configure reader size, font, transparency, shortcuts, and minimap access.
+- Configure reader size, font, transparency, shortcuts, and minimap access, with
+  an optional transparent background override while in combat.
 - Choose the interface language independently of the WoW client: English,
-  German, French, Russian, or Spanish.
+  German, French, Russian, Spanish, or Brazilian Portuguese.
 
 ## Supported clients
 
