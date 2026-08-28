@@ -1,20 +1,49 @@
-name: Release to Wago
+name: Release to CurseForge and Wago
 
 on:
   push:
     tags:
       - "[0-9]*.[0-9]*.[0-9]*"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-wago-${{ github.ref }}
+  group: release-addons-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release-wago:
-    name: Package and upload to Wago
+  verify-curseforge-token:
+    name: Verify CurseForge token without uploading
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Require CurseForge token
+        shell: bash
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          if [[ -z "$CF_API_TOKEN" ]]; then
+            echo "Repository secret CF_API_TOKEN is not configured." >&2
+            exit 1
+          fi
+
+      - name: Verify token with the read-only game versions API
+        shell: bash
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          response=$(curl --fail-with-body --silent --show-error \
+            --header "X-Api-Token: $CF_API_TOKEN" \
+            https://wow.curseforge.com/api/game/versions)
+          jq -e 'type == "array" and length > 0' <<<"$response" >/dev/null
+
+  release-addons:
+    name: Package and upload to CurseForge and Wago
+    if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
 
@@ -53,17 +82,17 @@ jobs:
         uses: BigWigsMods/packager@6d50adb6e8517eefef63f4afb16a6518166a6b28 # v2.5.1
         with:
           args: >-
-            -d -u -p 0 -w 0 -a BKpglP6E
-            -r "${{ runner.temp }}/wago-dry-run"
+            -d -u -p 1650935 -w 0 -a BKpglP6E
+            -r "${{ runner.temp }}/addon-dry-run"
             -n "{package-name}-{project-version}"
           pandoc: false
 
       - name: Verify sterile package
         shell: bash
         run: |
-          archive="$RUNNER_TEMP/wago-dry-run/ParchmentReader-$GITHUB_REF_NAME.zip"
+          archive="$RUNNER_TEMP/addon-dry-run/ParchmentReader-$GITHUB_REF_NAME.zip"
           mapfile -d '' archives < <(
-            find "$RUNNER_TEMP/wago-dry-run" -maxdepth 1 \
+            find "$RUNNER_TEMP/addon-dry-run" -maxdepth 1 \
               -type f -name '*.zip' -print0
           )
           if (( ${#archives[@]} != 1 )) || [[ "${archives[0]}" != "$archive" ]]; then
@@ -71,8 +100,8 @@ jobs:
             exit 1
           fi
 
-          expected="$RUNNER_TEMP/wago-expected-files.txt"
-          actual="$RUNNER_TEMP/wago-actual-files.txt"
+          expected="$RUNNER_TEMP/addon-expected-files.txt"
+          actual="$RUNNER_TEMP/addon-actual-files.txt"
           {
             printf '%s\n' \
               ParchmentReader/Assets/Pin.tga \
@@ -98,22 +127,28 @@ jobs:
             }
           done < "$expected"
 
-      - name: Require Wago token
+      - name: Require upload tokens
         shell: bash
         env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
         run: |
+          if [[ -z "$CF_API_TOKEN" ]]; then
+            echo "Repository secret CF_API_TOKEN is not configured." >&2
+            exit 1
+          fi
           if [[ -z "$WAGO_API_TOKEN" ]]; then
             echo "Repository secret WAGO_API_TOKEN is not configured." >&2
             exit 1
           fi
 
-      - name: Package and upload only to Wago
+      - name: Package and upload to CurseForge and Wago
         uses: BigWigsMods/packager@6d50adb6e8517eefef63f4afb16a6518166a6b28 # v2.5.1
         with:
           args: >-
-            -u -p 0 -w 0 -a BKpglP6E
+            -u -p 1650935 -w 0 -a BKpglP6E
             -n "{package-name}-{project-version}"
           pandoc: false
         env:
+          CF_API_KEY: ${{ secrets.CF_API_TOKEN }}
           WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
