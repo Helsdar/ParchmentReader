@@ -6,7 +6,11 @@ resizable window.
 
 ## Features
 
-- Create, edit, organize, and search saved books and notes.
+- Create, edit, and organize saved books and notes.
+- Search titles and collections by default, or enable the compact **Aa** scope
+  to find a complete phrase in book content within the active collection.
+- Open a content result with Enter or a click, highlight the matching phrase,
+  move between occurrences, and return without replacing saved reading progress.
 - Read continuously with automatic position saving.
 - Group books into collections.
 - Add, rename, navigate, delete, and restore bookmarks.
@@ -62,6 +66,10 @@ the corresponding Classic client.
 - Drag the minimap icon to reposition it.
 - Use **+ Add Book** to create your first saved book.
 - Right-click a saved book for edit and move actions.
+- Use the search field for title and collection terms. Toggle **Aa** for content
+  phrases, then press Enter to open the first result or click another result.
+- Use the contextual footer arrows to move between content matches and **×** to
+  return to the ordinary saved reading position.
 - Click the book page before using keyboard navigation; click outside it or
   press Escape to return keyboard control to WoW.
 - Use the Pin button in the Reader header to lock its position and size and
