@@ -9,7 +9,7 @@
 ## Notes-esMX: Una biblioteca dentro del juego para leer, organizar y marcar libros y notas
 ## Notes-ptBR: Uma biblioteca no jogo para ler, organizar e marcar livros e notas
 ## Author: Helsdar
-## Version: 1.2.0
+## Version: 1.3.0
 ## X-License: All Rights Reserved
 ## X-Wago-ID: BKpglP6E
 ## SavedVariables: ParchmentReaderDB
@@ -22,6 +22,7 @@ Locales\ruRU.lua
 Locales\esES.lua
 Locales\ptBR.lua
 Core.lua
+Search.lua
 UI\Theme.lua
 UI\KeyboardHelp.lua
 UI\QuickNote.lua

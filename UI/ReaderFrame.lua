@@ -22,25 +22,6 @@ local READER_FOCUS_MODIFIER_KEYS = {
     RCTRL = true,
     RSHIFT = true,
 }
-local SEARCH_CASE_FOLD = {
-    ["А"] = "а", ["Б"] = "б", ["В"] = "в", ["Г"] = "г",
-    ["Д"] = "д", ["Е"] = "е", ["Ё"] = "ё", ["Ж"] = "ж",
-    ["З"] = "з", ["И"] = "и", ["Й"] = "й", ["К"] = "к",
-    ["Л"] = "л", ["М"] = "м", ["Н"] = "н", ["О"] = "о",
-    ["П"] = "п", ["Р"] = "р", ["С"] = "с", ["Т"] = "т",
-    ["У"] = "у", ["Ф"] = "ф", ["Х"] = "х", ["Ц"] = "ц",
-    ["Ч"] = "ч", ["Ш"] = "ш", ["Щ"] = "щ", ["Ъ"] = "ъ",
-    ["Ы"] = "ы", ["Ь"] = "ь", ["Э"] = "э", ["Ю"] = "ю",
-    ["Я"] = "я", ["À"] = "à", ["Á"] = "á", ["Â"] = "â",
-    ["Ã"] = "ã",
-    ["Ä"] = "ä", ["Æ"] = "æ", ["Ç"] = "ç", ["É"] = "é",
-    ["È"] = "è", ["Ê"] = "ê", ["Ë"] = "ë", ["Í"] = "í",
-    ["Î"] = "î", ["Ï"] = "ï", ["Ñ"] = "ñ", ["Ó"] = "ó",
-    ["Ô"] = "ô", ["Õ"] = "õ", ["Ö"] = "ö", ["Œ"] = "œ", ["Ú"] = "ú",
-    ["Ù"] = "ù", ["Û"] = "û", ["Ü"] = "ü", ["Ÿ"] = "ÿ",
-    ["ẞ"] = "ß",
-}
-
 local function Clamp(value, minimum, maximum)
     return math.max(minimum, math.min(value, maximum))
 end
@@ -66,35 +47,6 @@ local function RefreshPinButtonColor(button)
         ParchmentReader:IsReaderPinned()
             and Theme:Get("accent", "gold")
             or nil)
-end
-
-local function NormalizeSearchText(value)
-    local normalized = string.lower(value or "")
-    for upper, lower in pairs(SEARCH_CASE_FOLD) do
-        normalized = string.gsub(normalized, upper, lower)
-    end
-    return strtrim(normalized)
-end
-
-local function GetSearchTerms(value)
-    local terms = {}
-    for term in string.gmatch(NormalizeSearchText(value), "%S+") do
-        terms[#terms + 1] = term
-    end
-    return terms
-end
-
-local function BookMatchesSearch(bookData, terms)
-    if #terms == 0 then return true end
-
-    local searchableText = NormalizeSearchText(
-        (bookData.title or "") .. " " .. (bookData.collection or ""))
-    for _, term in ipairs(terms) do
-        if not string.find(searchableText, term, 1, true) then
-            return false
-        end
-    end
-    return true
 end
 
 local function ConfigureOutsideDismiss(frame, relatedFrameGetter)
@@ -1191,6 +1143,7 @@ local function CreateBookmarkRow(popover, index)
             bookmark,
             offset)
         popover.activeBookmarkId = bookmark.id
+        ParchmentReader:EndContentSearchNavigation(true)
         ParchmentReader:ScrollReaderToReadingOffset(offset, true)
         RefreshBookmarkPopover(popover)
     end)
@@ -1658,7 +1611,9 @@ end
 local function CompareNormalizedBookTitles(
     leftTitle, leftNormalized, rightTitle, rightNormalized)
     if leftNormalized == rightNormalized then
-        return (leftTitle or "") < (rightTitle or "")
+        local leftSource = type(leftTitle) == "string" and leftTitle or ""
+        local rightSource = type(rightTitle) == "string" and rightTitle or ""
+        return leftSource < rightSource
     end
     return leftNormalized < rightNormalized
 end
@@ -1666,9 +1621,9 @@ end
 function ParchmentReader:CompareBookTitles(leftTitle, rightTitle)
     return CompareNormalizedBookTitles(
         leftTitle,
-        NormalizeSearchText(leftTitle),
+        self:NormalizeSearchText(leftTitle),
         rightTitle,
-        NormalizeSearchText(rightTitle))
+        self:NormalizeSearchText(rightTitle))
 end
 
 local function SetReaderControlTransparency(frame, transparent)
@@ -2388,7 +2343,7 @@ function ParchmentReader:CreateReaderFrame()
     searchContainer:SetHeight(24)
     searchBox:ClearAllPoints()
     searchBox:SetPoint("TOPLEFT", searchContainer, "TOPLEFT", 1, -1)
-    searchBox:SetPoint("BOTTOMRIGHT", searchContainer, "BOTTOMRIGHT", -27, 1)
+    searchBox:SetPoint("BOTTOMRIGHT", searchContainer, "BOTTOMRIGHT", -57, 1)
     searchBox:SetMaxLetters(80)
 
     local searchHint = searchBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -2410,6 +2365,43 @@ function ParchmentReader:CreateReaderFrame()
     end)
     clearSearchButton:Hide()
 
+    local searchContentButton = PRUI.IconButton(
+        searchContainer, nil, nil, {
+            width = 26,
+            height = 20,
+            iconText = "Aa",
+            fontObject = "GameFontNormalSmall",
+        })
+    searchContentButton.label:ClearAllPoints()
+    searchContentButton.label:SetPoint("CENTER")
+    PRUI.SetButtonIdleBackgroundAlpha(searchContentButton, 0.35)
+    local function SetContentSearchEnabled(enabled)
+        PRUI.SetButtonTextColor(
+            searchContentButton,
+            enabled and Theme:Get("accent", "gold") or Theme:Get("text", "muted"))
+        PRUI.SetButtonSelected(searchContentButton, enabled == true)
+        searchContentButton.tooltipText = enabled
+            and L["Search book text — on"]
+            or L["Search book text — off"]
+    end
+    local function PositionSearchContentButton(hasText)
+        searchContentButton:ClearAllPoints()
+        searchContentButton:SetPoint(
+            "RIGHT", searchContainer, "RIGHT", hasText and -28 or -2, 0)
+    end
+    SetContentSearchEnabled(false)
+    PositionSearchContentButton(false)
+    searchContentButton:SetScript("OnClick", function(button)
+        SetContentSearchEnabled(button.pruiSelected ~= true)
+        if frame.sidebarScroll then
+            frame.sidebarScroll:SetVerticalScroll(0)
+            ParchmentReader:RefreshBookList()
+        end
+    end)
+    PRUI.AttachTooltip(searchContentButton, function(button)
+        return button.tooltipText
+    end)
+
     searchBox:HookScript("OnTextChanged", function(input)
         local hasText = input:GetText() ~= ""
         if hasText then
@@ -2419,12 +2411,14 @@ function ParchmentReader:CreateReaderFrame()
             searchHint:Show()
             clearSearchButton:Hide()
         end
+        PositionSearchContentButton(hasText)
         if frame.sidebarScroll then
             frame.sidebarScroll:SetVerticalScroll(0)
             ParchmentReader:RefreshBookList()
         end
     end)
     searchBox:SetScript("OnEnterPressed", function(input)
+        ParchmentReader:ActivateFirstBookSearchResult()
         input:ClearFocus()
     end)
     searchBox:SetScript("OnEscapePressed", function(input)
@@ -2434,10 +2428,15 @@ function ParchmentReader:CreateReaderFrame()
             input:ClearFocus()
         end
     end)
-    PRUI.AttachTooltip(searchBox, L["Search by book title or collection"])
+    PRUI.AttachTooltip(
+        searchBox,
+        L["Search by book title or collection"]
+            .. "\n"
+            .. L["Press Enter to open the first search result"])
     frame.searchBox = searchBox
     frame.searchContainer = searchContainer
     frame.clearSearchButton = clearSearchButton
+    frame.searchContentButton = searchContentButton
 
     local collapsedLibraryButton = PRUI.IconButton(
         sidebar,
@@ -2727,6 +2726,80 @@ function ParchmentReader:CreateReaderFrame()
     SetFontStringColor(bookmarkCount, Theme:Get("accent", "gold"))
     frame.bookmarkCount = bookmarkCount
 
+    local searchMatchBar = CreateFrame("Frame", nil, navigation)
+    searchMatchBar:SetPoint("LEFT", navigation, "LEFT", 0, 0)
+    searchMatchBar:SetPoint("RIGHT", bookmarkButton, "LEFT", -3, 0)
+    searchMatchBar:SetHeight(22)
+
+    local previousMatchButton = PRUI.IconButton(
+        searchMatchBar, nil, L["Previous search match"], {
+            width = 28,
+            height = 22,
+            iconText = "<",
+        })
+    previousMatchButton:SetPoint("LEFT", searchMatchBar, "LEFT", 0, 0)
+    previousMatchButton:SetScript("OnClick", function()
+        ParchmentReader:PreviousContentSearchMatch()
+    end)
+
+    local returnToReadingButton = PRUI.IconButton(
+        searchMatchBar, nil, L["Return to saved reading position"], {
+            width = 24,
+            height = 22,
+            iconText = "×",
+            fontObject = "GameFontNormal",
+        })
+    returnToReadingButton:SetPoint("RIGHT", searchMatchBar, "RIGHT", 0, 0)
+    returnToReadingButton:SetScript("OnClick", function()
+        ParchmentReader:EndContentSearchNavigation(true)
+    end)
+
+    local nextMatchButton = PRUI.IconButton(
+        searchMatchBar, nil, L["Next search match"], {
+            width = 28,
+            height = 22,
+            iconText = ">",
+        })
+    nextMatchButton:SetPoint("RIGHT", returnToReadingButton, "LEFT", -3, 0)
+    nextMatchButton:SetScript("OnClick", function()
+        ParchmentReader:NextContentSearchMatch()
+    end)
+
+    local searchMatchText = searchMatchBar:CreateFontString(
+        nil, "OVERLAY", "GameFontNormalSmall")
+    searchMatchText:SetPoint("LEFT", previousMatchButton, "RIGHT", 6, 0)
+    searchMatchText:SetPoint("RIGHT", nextMatchButton, "LEFT", -6, 0)
+    searchMatchText:SetJustifyH("CENTER")
+    searchMatchText:SetText("")
+    SetFontStringColor(searchMatchText, Theme:Get("accent", "gold"))
+
+    frame.searchMatchBar = searchMatchBar
+    frame.previousMatchButton = previousMatchButton
+    frame.nextMatchButton = nextMatchButton
+    frame.returnToReadingButton = returnToReadingButton
+    frame.searchMatchText = searchMatchText
+
+    function ParchmentReader:RefreshContentSearchNavigationControls()
+        local matchIndex, matchCount = self:GetContentSearchNavigationState()
+        local active = matchIndex ~= nil
+        previousButton:SetShown(not active)
+        nextButton:SetShown(not active)
+        pageText:SetShown(not active)
+        progressBar:SetShown(not active)
+        searchMatchBar:SetShown(active)
+        if not active then return end
+
+        searchMatchText:SetFormattedText("%d / %d", matchIndex, matchCount)
+        if matchCount > 1 then
+            previousMatchButton:Enable()
+            nextMatchButton:Enable()
+        else
+            previousMatchButton:Disable()
+            nextMatchButton:Disable()
+        end
+    end
+    self:RefreshContentSearchNavigationControls()
+
     local bookmarkPopover = CreateBookmarkPopover(frame, bookmarkButton)
     frame.bookmarkPopover = bookmarkPopover
     bookmarkButton:SetScript("OnClick", function()
@@ -2758,6 +2831,7 @@ function ParchmentReader:CreateReaderFrame()
         helpButton,
         collectionSelector,
         clearSearchButton,
+        searchContentButton,
         collapsedLibraryButton,
         collapsedQuickNoteButton,
         addBookButton,
@@ -2765,6 +2839,9 @@ function ParchmentReader:CreateReaderFrame()
         emptyAction,
         previousButton,
         nextButton,
+        previousMatchButton,
+        nextMatchButton,
+        returnToReadingButton,
         bookmarkButton,
     }
 
@@ -2852,6 +2929,28 @@ function ParchmentReader:CreateReaderFrame()
     return frame
 end
 
+function ParchmentReader:ActivateBookSearchResult(bookKey)
+    local frame = ParchmentReaderFrame
+    if not frame or not bookKey or not self.books[bookKey] then return false end
+
+    if not self:LoadBook(bookKey) then return false end
+    local contentSearchEnabled = frame.searchContentButton
+        and frame.searchContentButton.pruiSelected == true
+    local phrase = contentSearchEnabled
+        and self:GetSearchPhrase(frame.searchBox and frame.searchBox:GetText())
+        or ""
+    if phrase ~= "" then
+        self:StartContentSearchNavigation(bookKey, phrase)
+    end
+    return true
+end
+
+function ParchmentReader:ActivateFirstBookSearchResult()
+    local frame = ParchmentReaderFrame
+    if not frame or not frame.firstSearchResultKey then return false end
+    return self:ActivateBookSearchResult(frame.firstSearchResultKey)
+end
+
 function ParchmentReader:RefreshBookList()
     local frame = ParchmentReaderFrame
     if not frame then return end
@@ -2859,13 +2958,26 @@ function ParchmentReader:RefreshBookList()
     for _, button in ipairs(frame.bookButtons) do
         button:Hide()
     end
+    frame.firstSearchResultKey = nil
+
+    local searchText = frame.searchBox and frame.searchBox:GetText()
+    local searchTerms = self:GetSearchTerms(searchText)
+    local hasSearch = #searchTerms > 0
+    local includeContent = frame.searchContentButton
+        and frame.searchContentButton.pruiSelected == true
+    local searchPhrase = includeContent and hasSearch
+        and self:GetSearchPhrase(searchText) or ""
+    self:SyncContentSearchNavigationContext(includeContent, searchPhrase)
+    if hasSearch and includeContent then
+        self:PruneIndex(self.books)
+    end
 
     local sortedBooks = {}
     for bookKey, bookData in pairs(self.books) do
         sortedBooks[#sortedBooks + 1] = {
             key = bookKey,
             data = bookData,
-            normalizedTitle = NormalizeSearchText(bookData.title),
+            normalizedTitle = self:NormalizeSearchText(bookData.title),
         }
     end
     table.sort(sortedBooks, function(a, b)
@@ -2876,7 +2988,6 @@ function ParchmentReader:RefreshBookList()
             b.normalizedTitle)
     end)
 
-    local searchTerms = GetSearchTerms(frame.searchBox and frame.searchBox:GetText())
     local visibleIndex = 1
     local buttonHeight = 26
     for _, entry in ipairs(sortedBooks) do
@@ -2884,9 +2995,15 @@ function ParchmentReader:RefreshBookList()
         local bookData = entry.data
         local visible = not self.currentCollection
             or bookData.custom and bookData.collection == self.currentCollection
-        visible = visible and BookMatchesSearch(bookData, searchTerms)
+        if visible and hasSearch then
+            visible = self:BookMatchesSearch(
+                bookKey, bookData, searchTerms, includeContent, searchPhrase)
+        end
 
         if visible then
+            if hasSearch and not frame.firstSearchResultKey then
+                frame.firstSearchResultKey = bookKey
+            end
             local button = frame.bookButtons[visibleIndex]
             if not button then
                 button = PRUI.Button(frame.bookListScroll, "", {
@@ -2912,7 +3029,8 @@ function ParchmentReader:RefreshBookList()
                     if mouseButton == "LeftButton" then
                         local menu = _G.ParchmentReaderBookContextMenu
                         if menu then menu:Hide() end
-                        ParchmentReader:LoadBook(bookButton.bookKey)
+                        ParchmentReader:ActivateBookSearchResult(
+                            bookButton.bookKey)
                     elseif mouseButton == "RightButton" then
                         ShowBookContextMenu(bookButton.bookKey, bookButton)
                     end
@@ -2986,8 +3104,9 @@ function ParchmentReader:RefreshBookList()
                     L["No books in |cFFD1AD61%s|r match this search."],
                     self.currentCollection))
             else
-                emptyState.message:SetText(L[
-                    "Try another title or collection name, or clear the search."])
+                emptyState.message:SetText(includeContent
+                    and L["Try another title, collection, or text passage, or clear the search."]
+                    or L["Try another title or collection name, or clear the search."])
             end
             emptyState.actionButton:SetText(L["Clear Search"])
             emptyState.actionButton.action = "clear-search"

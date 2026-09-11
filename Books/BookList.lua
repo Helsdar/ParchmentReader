@@ -5,7 +5,7 @@ WELCOME TO PARCHMENT READER
 
 Parchment Reader is an in-game library for books, stories, notes, and any other text you want to keep close while playing.
 
-This guide and Adventure Story are starter books. They behave exactly like books you add yourself: you can edit them, move them into collections, rename them, or delete them. Once deleted, a starter book does not return after a reload or addon update.
+This guide and Adventure Story are starter books. They behave exactly like books you add yourself: you can edit their content, move them into collections, or delete them. Once deleted, a starter book does not return after a reload or addon update.
 
 OPENING AND READING
 
@@ -23,9 +23,9 @@ BUILDING YOUR LIBRARY
 
 Choose Add Book at the bottom of the library to create a book. Give it a title, choose a collection if desired, paste or type the content, and save it.
 
-Right-click any book for its actions. You can edit its title and content or move it to another collection. The Edit Book window also contains Delete. Deleting a book removes its saved reading position and bookmarks after confirmation.
+Right-click any book for its actions. You can edit its content or move it to another collection. The Edit Book window also contains Delete. Deleting a book removes its saved reading position and bookmarks after confirmation.
 
-Use the search field to find words in book titles or collection names. The collection selector can show every book or only the books in one collection. Collection actions let you create, rename, and delete collections without losing their books.
+Use the search field to find words in book titles or collection names. Toggle Aa inside the field when you also want to find a complete phrase in book content. The collection selector can show every book or only the books in one collection. Collection actions let you create, rename, and delete collections without losing their books.
 
 QUICK NOTE
 

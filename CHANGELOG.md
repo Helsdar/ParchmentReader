@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.0 — 2026-09-11
+
+- Added an optional **Aa** search scope that finds a complete phrase inside book
+  content while title and collection search remain the default.
+- Pressing Enter opens the first visible result; opening a content-matched result
+  with Enter or a click highlights its first matching phrase.
+- Added contextual previous/next match controls and a return action that restores
+  the ordinary saved reading position. Search browsing never replaces reading
+  progress.
+- Kept the content index runtime-only and lazy, so empty and metadata-only search
+  does not read or normalize book content.
+- Corrected the starter guide for newly created profiles without changing
+  existing starter books or user-authored books.
+
 ## 1.2.0 — 2026-08-28
 
 - Reduced the default Reader size to `720x480` and the standard minimum to

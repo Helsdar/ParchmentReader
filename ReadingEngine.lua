@@ -11,6 +11,8 @@ local RESIZE_DEBOUNCE_SECONDS = 0.12
 local SMOOTH_SCROLL_SPEED = 14
 local WHEEL_LINE_COUNT = 4
 local LAYOUT_CACHE_LIMIT = 2
+local SEARCH_MATCH_COLOR = "|cFFFFD36A"
+local SEARCH_MATCH_COLOR_END = "|r"
 local RETURN_TO_BEGINNING_POPUP = "PARCHMENTREADER_RETURN_TO_BEGINNING"
 local GO_TO_END_POPUP = "PARCHMENTREADER_GO_TO_END"
 local L = ParchmentReader.L
@@ -517,6 +519,36 @@ local function ScrollToOffset(frame, layout, scrollOffset)
     return chunk.startOffset + candidate
 end
 
+local function HighlightActiveSearchMatch(layout, chunk)
+    local navigation = ParchmentReader.readerSearchNavigation
+    if not navigation
+        or navigation.bookKey ~= layout.bookKey
+        or navigation.content ~= layout.content
+    then
+        return chunk.text
+    end
+
+    local match = navigation.matches[navigation.activeIndex]
+    if not match
+        or match.endOffset <= chunk.startOffset
+        or match.startOffset >= chunk.endOffset
+    then
+        return chunk.text
+    end
+
+    local highlightStart = math.max(match.startOffset, chunk.startOffset)
+    local highlightEnd = math.min(match.endOffset, chunk.endOffset)
+    local localStart = highlightStart - chunk.startOffset
+    local localEnd = highlightEnd - chunk.startOffset
+    return table.concat({
+        string.sub(chunk.text, 1, localStart),
+        SEARCH_MATCH_COLOR,
+        string.sub(chunk.text, localStart + 1, localEnd),
+        SEARCH_MATCH_COLOR_END,
+        string.sub(chunk.text, localEnd + 1),
+    })
+end
+
 function ParchmentReader:RenderVisibleReaderChunks(scrollOffset)
     local frame = ParchmentReaderFrame
     local layout = self.readerLayoutMetrics
@@ -559,7 +591,7 @@ function ParchmentReader:RenderVisibleReaderChunks(scrollOffset)
             "TOPLEFT",
             8,
             -(CONTENT_PADDING_TOP + chunk.top))
-        fontString:SetText(chunk.text)
+        fontString:SetText(HighlightActiveSearchMatch(layout, chunk))
         fontString.chunkIndex = chunkIndex
         fontString:Show()
 
@@ -641,6 +673,16 @@ function ParchmentReader:CommitReadingPosition(scrollOffset)
     local book = self.books[self.currentBook]
     if book then
         book.totalPages = totalPages
+    end
+
+    local searchNavigation = self.readerSearchNavigation
+    if searchNavigation
+        and searchNavigation.bookKey == self.currentBook
+        and searchNavigation.content == layout.content
+    then
+        searchNavigation.transientOffset = offset
+        layout.lastCommittedScroll = clampedScroll
+        return
     end
 
     ParchmentReaderDB.bookPages = ParchmentReaderDB.bookPages or {}
@@ -868,6 +910,160 @@ function ParchmentReader:ScrollReaderToReadingOffset(offset, immediate)
     return true
 end
 
+local function RefreshContentSearchNavigationControls(self)
+    if self.RefreshContentSearchNavigationControls then
+        self:RefreshContentSearchNavigationControls()
+    end
+end
+
+local function InvalidateSearchHighlight(layout)
+    if not layout then return end
+    layout.visibleChunkStart = nil
+    layout.visibleChunkEnd = nil
+end
+
+local function SetReaderScrollWithoutPersistence(self, readingOffset, context)
+    local frame = ParchmentReaderFrame
+    local layout = self.readerLayoutMetrics
+    if not frame or not layout or layout.bookKey ~= self.currentBook then
+        return false
+    end
+
+    local safeOffset = self:SnapReadingOffset(layout.content, readingOffset)
+    local targetScroll = OffsetToScroll(frame, layout, safeOffset)
+    if context then
+        targetScroll = targetScroll - frame.contentScroll:GetHeight() * context
+    end
+    targetScroll = Clamp(targetScroll, 0, GetMaximumScroll(frame, layout))
+
+    self:StopReaderScrollAnimation()
+    self.currentReadingOffset = safeOffset
+    self.currentPage = select(1, GetLegacyPageMetrics(frame, layout, targetScroll))
+    frame.contentScroll:SetVerticalScroll(targetScroll)
+    InvalidateSearchHighlight(layout)
+    self:HandleReaderScroll(targetScroll)
+    layout.lastCommittedScroll = targetScroll
+    return true
+end
+
+function ParchmentReader:GetContentSearchNavigationState()
+    local navigation = self.readerSearchNavigation
+    local layout = self.readerLayoutMetrics
+    if not navigation
+        or not layout
+        or navigation.bookKey ~= self.currentBook
+        or navigation.content ~= layout.content
+    then
+        return nil
+    end
+    return navigation.activeIndex, #navigation.matches, navigation.bookKey
+end
+
+function ParchmentReader:EndContentSearchNavigation(restorePosition)
+    local navigation = self.readerSearchNavigation
+    if not navigation then
+        RefreshContentSearchNavigationControls(self)
+        return false
+    end
+
+    self.readerSearchNavigation = nil
+    local layout = self.readerLayoutMetrics
+    if restorePosition == true
+        and layout
+        and navigation.bookKey == self.currentBook
+        and navigation.content == layout.content
+    then
+        local savedOffset = self:GetSavedReadingOffset(
+            navigation.bookKey, layout.content)
+        SetReaderScrollWithoutPersistence(
+            self,
+            savedOffset or navigation.returnOffset or 0)
+    elseif layout then
+        InvalidateSearchHighlight(layout)
+        local frame = ParchmentReaderFrame
+        if frame then
+            self:RenderVisibleReaderChunks(
+                frame.contentScroll:GetVerticalScroll() or 0)
+        end
+    end
+
+    RefreshContentSearchNavigationControls(self)
+    return true
+end
+
+function ParchmentReader:JumpToContentSearchMatch(matchIndex)
+    local navigation = self.readerSearchNavigation
+    local count = navigation and #navigation.matches or 0
+    if count == 0 then return false end
+
+    local index = math.floor(tonumber(matchIndex) or 1)
+    navigation.activeIndex = ((index - 1) % count) + 1
+    local match = navigation.matches[navigation.activeIndex]
+    if not SetReaderScrollWithoutPersistence(self, match.startOffset, 0.18) then
+        return false
+    end
+
+    RefreshContentSearchNavigationControls(self)
+    return true
+end
+
+function ParchmentReader:StartContentSearchNavigation(bookKey, phrase)
+    local frame = ParchmentReaderFrame
+    local layout = self.readerLayoutMetrics
+    local normalizedPhrase = self:GetSearchPhrase(phrase)
+    if not frame
+        or not layout
+        or bookKey ~= self.currentBook
+        or layout.bookKey ~= bookKey
+        or normalizedPhrase == ""
+    then
+        return false
+    end
+
+    local matches = self:GetContentPhraseMatches(layout.content, normalizedPhrase)
+    if #matches == 0 then
+        self:EndContentSearchNavigation(true)
+        return false
+    end
+
+    self:EndContentSearchNavigation(false)
+    self.readerSearchNavigation = {
+        bookKey = bookKey,
+        content = layout.content,
+        phrase = normalizedPhrase,
+        matches = matches,
+        activeIndex = 1,
+        returnOffset = self:GetSavedReadingOffset(bookKey, layout.content) or 0,
+    }
+    return self:JumpToContentSearchMatch(1)
+end
+
+function ParchmentReader:PreviousContentSearchMatch()
+    local navigation = self.readerSearchNavigation
+    if not navigation then return false end
+    return self:JumpToContentSearchMatch(navigation.activeIndex - 1)
+end
+
+function ParchmentReader:NextContentSearchMatch()
+    local navigation = self.readerSearchNavigation
+    if not navigation then return false end
+    return self:JumpToContentSearchMatch(navigation.activeIndex + 1)
+end
+
+function ParchmentReader:SyncContentSearchNavigationContext(
+    includeContent, phrase)
+    local navigation = self.readerSearchNavigation
+    if not navigation then return false end
+
+    local normalizedPhrase = includeContent == true
+        and self:GetSearchPhrase(phrase)
+        or ""
+    if normalizedPhrase ~= navigation.phrase then
+        return self:EndContentSearchNavigation(true)
+    end
+    return false
+end
+
 function ParchmentReader:HandleReaderMouseWheel(delta)
     self:ScrollReaderByLines(-delta * WHEEL_LINE_COUNT)
 end
@@ -884,8 +1080,10 @@ function ParchmentReader:HandleReaderKey(key)
     elseif key == "PAGEDOWN" then
         self:ScrollReaderByViewport(0.9)
     elseif key == "HOME" then
+        self:EndContentSearchNavigation(true)
         self:RequestReturnToBeginning()
     elseif key == "END" then
+        self:EndContentSearchNavigation(true)
         self:RequestGoToEnd()
     else
         return false
@@ -931,6 +1129,7 @@ function ParchmentReader:UpdateReader(requestedReason)
 
     local book = self.currentBook and self.books[self.currentBook]
     if not book then
+        self:EndContentSearchNavigation(false)
         self:StopReaderScrollAnimation()
         self.readerLayoutMetrics = nil
         HideTextPool(frame)
@@ -951,6 +1150,13 @@ function ParchmentReader:UpdateReader(requestedReason)
     end
 
     local content = self:NormalizeLayoutText(book.content)
+    local searchNavigation = self.readerSearchNavigation
+    if searchNavigation
+        and (searchNavigation.bookKey ~= self.currentBook
+            or searchNavigation.content ~= content)
+    then
+        self:EndContentSearchNavigation(false)
+    end
     local descriptor = self:BuildLayoutDescriptor(frame, book)
     local layoutSignature = self:BuildLayoutSignature(descriptor)
     local layoutKey = self:BuildLayoutKey(descriptor)
