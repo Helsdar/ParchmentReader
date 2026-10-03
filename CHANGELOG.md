@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 — Unreleased
+## 2.0.0 — 2026-10-03
 
 - Added Library, Favorites, and Recent views. Favorite books keep their star
   when moved or renamed; Recent remembers the last 20 explicitly opened books
