@@ -105,6 +105,16 @@ jobs:
           {
             printf '%s\n' \
               ParchmentReader/Assets/Pin.tga \
+              ParchmentReader/Assets/ThemeSun.tga \
+              ParchmentReader/Assets/ThemeMoon.tga \
+              ParchmentReader/Assets/WarmParchment.tga \
+              ParchmentReader/Assets/LibraryBook.tga \
+              ParchmentReader/Assets/FavoriteOutline.tga \
+              ParchmentReader/Assets/FavoriteFilled.tga \
+              ParchmentReader/Assets/QuickNoteFeather.tga \
+              ParchmentReader/Assets/SettingsCog.tga \
+              ParchmentReader/Assets/RecentHistory.tga \
+              ParchmentReader/Assets/BookmarkRibbon.tga \
               ParchmentReader/Bindings.xml \
               ParchmentReader/LICENSE \
               ParchmentReader/ParchmentReader.toc \

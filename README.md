@@ -7,6 +7,8 @@ resizable window.
 ## Features
 
 - Create, edit, and organize saved books and notes.
+- Rename books while keeping their bookmarks and reading positions.
+- Switch between Library, Favorites, and the 20 most recently opened books.
 - Search titles and collections by default, or enable the compact **Aa** scope
   to find a complete phrase in book content within the active collection.
 - Open a content result with Enter or a click, highlight the matching phrase,
@@ -15,6 +17,8 @@ resizable window.
 - Group books into collections.
 - Add, rename, navigate, delete, and restore bookmarks.
 - Capture text quickly without leaving the game through Quick Note.
+- Resume the last saved Quick Note in its current collection, or start a new
+  note without losing an unsaved draft.
 - Use Compact Mode or minimize the reader to a movable floating icon.
 - Assign a shortcut that switches a visible Reader into or out of Compact Mode.
 - Keep the Reader or minimized launcher in its saved screen position between
@@ -23,6 +27,10 @@ resizable window.
   gameplay keys available to WoW at other times.
 - Configure reader size, font, transparency, shortcuts, and minimap access, with
   an optional transparent background override while in combat.
+- Choose Azeroth Glass, Light Parchment, or Warm Parchment, and assign the
+  sun/moon theme switch independently. Themes update open windows immediately.
+- Find settings in Reading, Appearance, Controls, and General, with a live font
+  sample and theme previews.
 - Choose the interface language independently of the WoW client: English,
   German, French, Russian, Spanish, or Brazilian Portuguese.
 
@@ -65,7 +73,13 @@ the corresponding Classic client.
 - Ctrl + left-click the minimap icon to open Quick Note.
 - Drag the minimap icon to reposition it.
 - Use **+ Add Book** to create your first saved book.
-- Right-click a saved book for edit and move actions.
+- Use Library, Favorites, and Recent below the search field. Right-click a book
+  to change its favorite status, edit it, or move it to another collection.
+- Right-click Recent to clear reading history after confirmation.
+- Change a book's title in Edit Book; titles must be unique in its collection.
+- Open Quick Note and use **Resume** to continue its last saved note. Assign
+  **Resume Last Quick Note** in Controls or WoW Key Bindings for direct access.
+  Resume becomes available after your first Quick Note save in this version.
 - Use the search field for title and collection terms. Toggle **Aa** for content
   phrases, then press Enter to open the first result or click another result.
 - Use the contextual footer arrows to move between content matches and **×** to

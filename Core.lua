@@ -20,6 +20,7 @@ function ParchmentReader:RefreshLocalizedGlobals()
     BINDING_NAME_PARCHMENTREADER_TOGGLE_MINIMIZE =
         L["Minimize / Restore Reader"]
     BINDING_NAME_PARCHMENTREADER_QUICK_NOTE = L["Open Quick Note"]
+    BINDING_NAME_PARCHMENTREADER_RESUME_QUICK_NOTE = L["Resume Last Quick Note"]
 end
 
 ParchmentReader:RefreshLocalizedGlobals()
@@ -66,6 +67,9 @@ local DEFAULTS = {
     readerPinned    = false,
     readerKeyboardNavigation = true,
     interfaceLanguage = "auto",
+    themeName = "AzerothGlass",
+    moonTheme = "AzerothGlass",
+    sunTheme = "LightParchment",
 }
 
 local TRANSPARENCY_MODES = {
@@ -89,6 +93,72 @@ local function MoveSelectedBook(oldKey, newKey)
     if ParchmentReaderDB and ParchmentReaderDB.selectedBook == oldKey then
         ParchmentReaderDB.selectedBook = newKey
     end
+end
+
+
+
+function ParchmentReader:RekeyOpenBookReferences(oldKey, newKey)
+    local editor = ParchmentReaderEditorFrame
+    if editor then
+        if editor.editingBook == oldKey then editor.editingBook = newKey end
+        if editor.pendingBookKey == oldKey then editor.pendingBookKey = newKey end
+        if editor.pendingDeleteData and editor.pendingDeleteData.bookKey == oldKey then
+            editor.pendingDeleteData.bookKey = newKey
+        end
+    end
+    if ParchmentReaderDB.lastQuickNote == oldKey then ParchmentReaderDB.lastQuickNote = newKey end
+    local book = self.books[newKey]
+    for _, draft in ipairs({ParchmentReaderEditorFrame or false, ParchmentReaderQuickNoteFrame or false}) do
+        if draft then
+            if draft.editingBook == oldKey then draft.editingBook = newKey end
+            local baseline = draft.savedBookBaseline
+            if baseline and baseline.key == oldKey then
+                baseline.key = newKey
+                if book then
+                    baseline.title = book.title
+                    baseline.collection = book.collection
+                end
+            end
+        end
+    end
+    if self.RefreshQuickNoteResumeRow then self:RefreshQuickNoteResumeRow() end
+    local navigation = ParchmentReader.readerSearchNavigation
+    if navigation and navigation.bookKey == oldKey then
+        navigation.bookKey = newKey
+    end
+end
+
+local function UpdateEditorCollection(oldName, newName)
+    local editor = ParchmentReaderEditorFrame
+    if not editor then return end
+    if editor.selectedCollection == oldName then
+        editor.selectedCollection = newName
+    end
+    if editor.editorBaseline and editor.editorBaseline.collection == oldName then
+        editor.editorBaseline.collection = newName
+    end
+end
+
+function ParchmentReader:CaptureSavedBookBaseline(key)
+    if not key then return nil end
+    local book = self.books[key]
+    local saved = ParchmentReaderDB.customBooks and ParchmentReaderDB.customBooks[key]
+    if not book or not saved then return nil end
+    return {key = key, book = book, saved = saved, title = book.title,
+        collection = book.collection, content = book.content,
+        savedContent = type(saved) == "table" and saved.content or saved,
+        revision = type(saved) == "table" and saved.revision or nil}
+end
+
+function ParchmentReader:SavedBookMatchesBaseline(key, baseline)
+    local book = self.books[key]
+    local saved = ParchmentReaderDB.customBooks and ParchmentReaderDB.customBooks[key]
+    return baseline.key == key and book == baseline.book and saved == baseline.saved
+        and book.title == baseline.title and book.collection == baseline.collection
+        and book.content == baseline.content
+        and (type(saved) ~= "table" or saved.collection == baseline.collection)
+        and (type(saved) == "table" and saved.content or saved) == baseline.savedContent
+        and (type(saved) == "table" and saved.revision or nil) == baseline.revision
 end
 
 
@@ -142,6 +212,7 @@ local function MoveSavedBookValue(values, oldKey, newKey)
 end
 
 local function ClearSavedBookState(bookKey)
+    if ParchmentReaderDB.lastQuickNote == bookKey then ParchmentReaderDB.lastQuickNote = nil end
     if ParchmentReaderDB.bookPages then
         ParchmentReaderDB.bookPages[bookKey] = nil
     end
@@ -154,6 +225,7 @@ local function ClearSavedBookState(bookKey)
     if ParchmentReaderDB.selectedBook == bookKey then
         ParchmentReaderDB.selectedBook = nil
     end
+    ParchmentReader:DeleteLibraryViewBook(bookKey)
 end
 
 local function SeedStarterBooks()
@@ -191,6 +263,8 @@ local function SeedStarterBooks()
                     MoveSavedBookValue(ParchmentReaderDB.bookPositions, oldKey, newKey)
                     MoveSavedBookValue(ParchmentReaderDB.bookmarks, oldKey, newKey)
                     MoveSelectedBook(oldKey, newKey)
+                    if ParchmentReaderDB.lastQuickNote == oldKey then ParchmentReaderDB.lastQuickNote = newKey end
+                    ParchmentReader:RekeyLibraryViewBook(oldKey, newKey)
                 end
                 if ParchmentReaderDB.selectedBook == legacyTitle then
                     ParchmentReaderDB.selectedBook = newKey
@@ -720,6 +794,7 @@ function ParchmentReader:ApplySidebarState(collapsed)
     if ParchmentReaderDB.sidebarCollapsed then
         sidebar:SetWidth(metrics.collapsedSidebarWidth)
         frame.collectionSelector:Hide()
+        if frame.libraryViewGroup then frame.libraryViewGroup:Hide() end
         if frame.searchBox then frame.searchBox:ClearFocus() end
         if frame.searchContainer then frame.searchContainer:Hide() end
         frame.sidebarScroll:Hide()
@@ -729,11 +804,16 @@ function ParchmentReader:ApplySidebarState(collapsed)
         frame.pinButton:Show()
         frame.settingsButton:Hide()
         frame.helpButton:Hide()
+        if frame.themeButton then
+            frame.themeButton:ClearAllPoints()
+            frame.themeButton:SetPoint("RIGHT", frame.minimizeButton, "LEFT", -3, 0)
+        end
         toggleBtn:SetText("»")
         toggleBtn.tooltipText = L["Exit Compact Mode — show library"]
     else
         sidebar:SetWidth(metrics.sidebarWidth)
         frame.collectionSelector:Show()
+        if frame.libraryViewGroup then frame.libraryViewGroup:Show() end
         if frame.searchContainer then frame.searchContainer:Show() end
         frame.sidebarScroll:Show()
         frame.addBookBtn:Show()
@@ -742,6 +822,10 @@ function ParchmentReader:ApplySidebarState(collapsed)
         frame.pinButton:Show()
         frame.settingsButton:Show()
         frame.helpButton:Show()
+        if frame.themeButton then
+            frame.themeButton:ClearAllPoints()
+            frame.themeButton:SetPoint("RIGHT", frame.settingsButton, "LEFT", -3, 0)
+        end
         toggleBtn:SetText(L["«  Compact Mode"])
         toggleBtn.tooltipText = L["Compact Mode — hide library"]
     end
@@ -763,6 +847,9 @@ function ParchmentReader:ApplySidebarState(collapsed)
     end
     if self.RefreshCollectionSelector then
         self:RefreshCollectionSelector()
+    end
+    if self.RefreshLibraryViewControls then
+        self:RefreshLibraryViewControls()
     end
     self:UpdateContentWidth()
 end
@@ -801,6 +888,7 @@ function ParchmentReader:AddCollection(name)
     end
     table.insert(ParchmentReaderDB.collections, name)
     self:RefreshCollectionSelector()
+    if self.RefreshEditorCollections then self:RefreshEditorCollections() end
 end
 
 local function CollectionExists(name)
@@ -857,6 +945,8 @@ local function RekeyCustomBook(bookKey, targetCollection)
     end
     ParchmentReader:MoveReadingPosition(bookKey, newKey)
     MoveSelectedBook(bookKey, newKey)
+    ParchmentReader:RekeyLibraryViewBook(bookKey, newKey)
+    ParchmentReader:RekeyOpenBookReferences(bookKey, newKey)
 
     local movedCurrentBook = ParchmentReader.currentBook == bookKey
     if movedCurrentBook then
@@ -958,6 +1048,8 @@ function ParchmentReader:RenameCollection(oldName, newName)
         end
         self:MoveReadingPosition(r.oldKey, r.newKey)
         MoveSelectedBook(r.oldKey, r.newKey)
+        self:RekeyLibraryViewBook(r.oldKey, r.newKey)
+        self:RekeyOpenBookReferences(r.oldKey, r.newKey)
 
         if self.currentBook == r.oldKey then
             self.currentBook = r.newKey
@@ -969,6 +1061,9 @@ function ParchmentReader:RenameCollection(oldName, newName)
     if self.currentCollection == oldName then
         self.currentCollection = newName
     end
+
+    UpdateEditorCollection(oldName, newName)
+    if self.RefreshEditorCollections then self:RefreshEditorCollections() end
 
     self:RefreshCollectionSelector()
     self:RefreshBookList()
@@ -1007,6 +1102,12 @@ function ParchmentReader:DeleteCollection(name)
         end
     end
 
+    local quick = ParchmentReaderQuickNoteFrame
+    local quickBook = quick and quick.editingBook and self.books[quick.editingBook]
+    if quick and quick:IsShown() and quickBook and quickBook.collection == name then
+        return false, "editing", quickBook.title
+    end
+
     if self.currentBook and self.books[self.currentBook]
         and self.books[self.currentBook].collection == name
         and ParchmentReaderFrame
@@ -1036,6 +1137,9 @@ function ParchmentReader:DeleteCollection(name)
     if self.currentCollection == name then
         self.currentCollection = nil
     end
+
+    UpdateEditorCollection(name, nil)
+    if self.RefreshEditorCollections then self:RefreshEditorCollections() end
 
     self:RefreshCollectionSelector()
     self:RefreshBookList()
@@ -1163,6 +1267,9 @@ _boot:SetScript("OnEvent", function(self, event, addonName)
 
         ParchmentReaderDB = ParchmentReaderDB or {}
         ApplyDefaults(ParchmentReaderDB)
+        ParchmentReader.Theme:NormalizeSlots(ParchmentReaderDB)
+        ParchmentReaderDB.themeName =
+            ParchmentReader.Theme:SetPalette(ParchmentReaderDB.themeName)
         ParchmentReaderDB.interfaceLanguage =
             ParchmentReader:NormalizeInterfaceLanguage(
                 ParchmentReaderDB.interfaceLanguage)
@@ -1203,6 +1310,7 @@ _boot:SetScript("OnEvent", function(self, event, addonName)
         MigrateCustomBooks()
         SeedStarterBooks()
         LoadSavedBooks()
+        ParchmentReader:InitializeLibraryViewData(ParchmentReader.books)
         ParchmentReader:RegisterWoWSettingsCategory()
 
         local selectedBook = ParchmentReaderDB.selectedBook

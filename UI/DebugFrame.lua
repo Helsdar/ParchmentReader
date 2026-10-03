@@ -190,6 +190,7 @@ function ParchmentReader:UpdateDebugInfo()
 
         table.insert(info, "")
         table.insert(info, Colorize("|cFF00FF00", L["[Settings]"]))
+        table.insert(info, L["Theme:"] .. " " .. tostring(ParchmentReaderDB.themeName))
         table.insert(info, string.format(
             L["Interface Language: %s; active locale: %s"],
             tostring(ParchmentReaderDB.interfaceLanguage),
@@ -351,7 +352,7 @@ function ParchmentReader:UpdateDebugInfo()
     local fullText = table.concat(info, "\n")
 
     local frame = ParchmentReaderDebugFrame
-    frame.debugText:SetText(fullText)
+    frame.debugText:SetText(ParchmentReader.Theme:DiagnosticText(fullText))
     if frame.debugScrollChild and frame.debugScrollFrame then
         frame.debugScrollChild:SetHeight(math.max(
             frame.debugScrollFrame:GetHeight(),

@@ -11,4 +11,7 @@
     <Binding name="PARCHMENTREADER_QUICK_NOTE" category="BINDING_HEADER_PARCHMENT_READER">
         ParchmentReader_OpenQuickNote()
     </Binding>
+    <Binding name="PARCHMENTREADER_RESUME_QUICK_NOTE" category="BINDING_HEADER_PARCHMENT_READER">
+        ParchmentReader_ResumeLastQuickNote()
+    </Binding>
 </Bindings>

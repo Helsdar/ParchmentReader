@@ -14,6 +14,12 @@ local BOOKMARK_POPOVER_MAX_WIDTH = 340
 local BOOKMARK_POPOVER_HEADER_HEIGHT = 38
 local BOOKMARK_POPOVER_FOOTER_HEIGHT = 38
 local BOOKMARK_POPOVER_MARGIN = 6
+
+local NATIVE_TOOLTIP_COLORS = {
+    collection = {0.82, 0.68, 0.38},
+    date = {0.65, 0.65, 0.65},
+    action = {0.80, 0.80, 0.80},
+}
 local READER_FOCUS_MODIFIER_KEYS = {
     LALT = true,
     LCTRL = true,
@@ -34,11 +40,17 @@ local function CollectionExists(name)
 end
 
 local function SetFontStringColor(fontString, color)
-    fontString:SetTextColor(color[1], color[2], color[3], color[4])
+    Theme:BindColor(fontString, "SetTextColor", color)
 end
 
 local function SetTextureColor(texture, color)
-    texture:SetVertexColor(color[1], color[2], color[3], color[4])
+    Theme:BindColor(texture, "SetVertexColor", color)
+end
+
+local function SetCollectionChevronExpanded(chevron, expanded)
+    local angle = math.rad(45)
+    chevron.left:SetRotation(expanded and angle or -angle)
+    chevron.right:SetRotation(expanded and -angle or angle)
 end
 
 local function RefreshPinButtonColor(button)
@@ -65,6 +77,88 @@ local function ConfigureOutsideDismiss(frame, relatedFrameGetter)
         end
         self:Hide()
     end)
+end
+
+local function HideReaderMenus(frame)
+    if frame then
+        if frame.collectionPopover then frame.collectionPopover:Hide() end
+        if frame.bookmarkPopover then frame.bookmarkPopover:Hide() end
+    end
+    local menus = {
+        _G.ParchmentReaderCollectionContextMenu,
+        _G.ParchmentReaderBookContextMenu,
+        _G.ParchmentReaderBookMovePopover,
+        _G.ParchmentReaderRecentContextMenu,
+    }
+    for _, menu in pairs(menus) do
+        menu:Hide()
+    end
+end
+
+function ParchmentReader:ConfirmClearReadingHistory()
+    StaticPopupDialogs["PARCHMENTREADER_CLEAR_RECENT"] = {
+        text = L["Clear reading history? Books and favorites will be kept."],
+        button1 = L["Clear History"],
+        button2 = L["Cancel"],
+        OnAccept = function()
+            ParchmentReader:ClearRecentBooks()
+            ParchmentReader:RefreshBookList()
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+    }
+    StaticPopup_Show("PARCHMENTREADER_CLEAR_RECENT")
+end
+
+function ParchmentReader:ShowRecentContextMenu(anchor)
+    local menu = _G.ParchmentReaderRecentContextMenu
+    local wasShown = menu and menu:IsShown()
+    HideReaderMenus(ParchmentReaderFrame)
+    GameTooltip:Hide()
+    anchor.pruiTooltipGeneration = (anchor.pruiTooltipGeneration or 0) + 1
+    if wasShown then return end
+
+    if not menu then
+        menu = PRUI.Panel(UIParent, {
+            name = "ParchmentReaderRecentContextMenu",
+            color = Theme:Get("bg", "popover"),
+            shadow = true,
+        })
+        PRUI.SetAddonFrameLayer(menu, PRUI.ADDON_FRAME_LEVELS.POPOVER)
+        menu:SetClampedToScreen(true)
+        menu:EnableMouse(true)
+        self:RegisterEscapeClose("ParchmentReaderRecentContextMenu")
+        menu.clearButton = PRUI.Button(menu, L["Clear Reading History"] .. "...", {
+            height = 24,
+            justifyH = "LEFT",
+        })
+        menu.clearButton:SetPoint("TOPLEFT", menu, "TOPLEFT", 5, -5)
+        menu.clearButton:SetScript("OnClick", function()
+            menu:Hide()
+            if #ParchmentReader:GetRecentBookKeys() > 0 then
+                ParchmentReader:ConfirmClearReadingHistory()
+            end
+        end)
+        local measure = menu:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        measure:SetText(L["Clear Reading History"] .. "...")
+        local width = math.max(144, math.ceil(measure:GetStringWidth()) + 26)
+        measure:Hide()
+        menu:SetSize(width, 34)
+        menu.clearButton:SetWidth(width - 10)
+        ConfigureOutsideDismiss(menu)
+        menu:Hide()
+    end
+    if #self:GetRecentBookKeys() > 0 then
+        menu.clearButton:Enable()
+    else
+        menu.clearButton:Disable()
+    end
+    PRUI.RefreshButton(menu.clearButton)
+    menu.owner = anchor
+    menu:ClearAllPoints()
+    menu:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
+    menu:Show()
 end
 
 local function GetCollectionNameDialog()
@@ -109,13 +203,14 @@ local function GetCollectionNameDialog()
     local inputBackground = input:CreateTexture(nil, "BACKGROUND")
     inputBackground:SetAllPoints()
     local controlColor = Theme:Get("bg", "control")
-    inputBackground:SetColorTexture(
-        controlColor[1], controlColor[2], controlColor[3], controlColor[4])
+    Theme:BindColor(inputBackground, "SetColorTexture", controlColor)
     PRUI.AddBorder(input, Theme:Get("border", "subtle"))
     dialog.input = input
 
     dialog.errorText = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     dialog.errorText:SetPoint("TOPLEFT", input, "BOTTOMLEFT", 2, -4)
+    dialog.errorText:SetPoint("TOPRIGHT", input, "BOTTOMRIGHT", -2, -4)
+    dialog.errorText:SetWordWrap(true)
     dialog.errorText:SetText(
         L["A collection with this name already exists."])
     SetFontStringColor(dialog.errorText, Theme:Get("state", "danger"))
@@ -132,20 +227,39 @@ local function GetCollectionNameDialog()
         dialog:Hide()
     end)
 
+    local function ShowError(message)
+        dialog.errorText:SetText(message)
+        dialog.errorText:Show()
+        dialog:SetHeight(math.max(150, dialog.errorText:GetStringHeight() + 132))
+    end
+
     local function Submit()
         local name = strtrim(dialog.input:GetText() or "")
         if name == "" then return end
         if name ~= dialog.oldName and CollectionExists(name) then
-            dialog.errorText:Show()
+            ShowError(L["A collection with this name already exists."])
             return
         end
 
-        dialog:Hide()
         if dialog.oldName then
-            ParchmentReader:RenameCollection(dialog.oldName, name)
+            local renamed, reason, title =
+                ParchmentReader:RenameCollection(dialog.oldName, name)
+            if not renamed then
+                if reason == "duplicate-collection" then
+                    ShowError(L["A collection with this name already exists."])
+                elseif reason == "duplicate-book" then
+                    ShowError(string.format(
+                        L["A book named “%s” already uses the new collection name."],
+                        title or L["this book"]))
+                else
+                    ShowError(L["The collection could not be renamed safely."])
+                end
+                return
+            end
         else
             ParchmentReader:AddCollection(name)
         end
+        dialog:Hide()
     end
 
     dialog.acceptButton:SetScript("OnClick", Submit)
@@ -155,6 +269,7 @@ local function GetCollectionNameDialog()
     end)
     input:SetScript("OnTextChanged", function()
         dialog.errorText:Hide()
+        dialog:SetHeight(150)
     end)
     dialog:Hide()
     return dialog
@@ -256,9 +371,8 @@ local function ShowDeleteCollectionDialog(collectionName)
     local dialog = GetDeleteCollectionDialog()
     dialog.collectionName = collectionName
     dialog.errorText:Hide()
-    dialog.message:SetText(string.format(
-        L["Delete |cFFD1AD61%s|r?\nIts books will be moved to No Collection."],
-        collectionName))
+    Theme:SetText(dialog.message, L["Delete |cFFD1AD61%s|r?\nIts books will be moved to No Collection."],
+                collectionName)
     dialog:Show()
 end
 
@@ -276,6 +390,10 @@ local function GetCollectionContextMenu()
     menu:SetClampedToScreen(true)
     menu:EnableMouse(true)
     ParchmentReader:RegisterEscapeClose("ParchmentReaderCollectionContextMenu")
+    menu.labelMeasure = menu:CreateFontString(
+        nil, "OVERLAY", "GameFontNormalSmall")
+    menu.labelMeasure:SetWordWrap(false)
+    menu.labelMeasure:Hide()
 
     menu.renameButton = PRUI.Button(menu, L["Rename Collection"], {
         width = 216,
@@ -322,17 +440,49 @@ local function GetCollectionContextMenu()
     return menu
 end
 
+local function SizeCollectionContextMenu(menu)
+    local buttons = {menu.renameButton, menu.deleteButton}
+    local textWidth = 0
+    for _, button in ipairs(buttons) do
+        menu.labelMeasure:SetText(button.label:GetText())
+        textWidth = math.max(textWidth, menu.labelMeasure:GetStringWidth())
+    end
+
+    local width = Clamp(math.ceil(textWidth) + 26, 144, 260)
+    menu:SetWidth(width)
+    for _, button in ipairs(buttons) do button:SetWidth(width - 10) end
+end
+
 local function ShowCollectionContextMenu(collectionName, anchor)
+    GameTooltip:Hide()
+    anchor.pruiTooltipGeneration = (anchor.pruiTooltipGeneration or 0) + 1
     local menu = GetCollectionContextMenu()
     menu.collectionName = collectionName
+    SizeCollectionContextMenu(menu)
     menu.owner = anchor
     menu:ClearAllPoints()
     menu:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 4, 0)
     menu:Show()
 end
 
+local function GetCollectionLabelTooltip(button)
+    local contextMenu = _G.ParchmentReaderCollectionContextMenu
+    if contextMenu and contextMenu:IsShown() then return end
+    local text = button.item and button.item.label or button.fullLabel
+    if not text then return end
+    if not button.collectionLabelMeasure then
+        local measure = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        measure:SetWordWrap(false)
+        measure:Hide()
+        button.collectionLabelMeasure = measure
+    end
+    local measure = button.collectionLabelMeasure
+    measure:SetText(text)
+    if measure:GetStringWidth() > button.label:GetWidth() then return text end
+end
+
 local function BuildCollectionItems()
-    local items = {{label = L["All Books"], isAll = true}}
+    local items = {{label = L["All Collections"], isAll = true}}
     for _, collectionName in ipairs(ParchmentReaderDB.collections or {}) do
         items[#items + 1] = {
             label = collectionName,
@@ -346,8 +496,7 @@ local function SetCollectionRowSelected(row, selected)
     PRUI.SetButtonSelected(row, false)
 
     local background = Theme:Get("bg", selected and "popoverAction" or "popoverRow")
-    row.pruiBackground:SetColorTexture(
-        background[1], background[2], background[3], background[4])
+    Theme:BindColor(row.pruiBackground, "SetColorTexture", background)
     PRUI.SetButtonBorderColor(
         row, Theme:Get("border", selected and "elevated" or "subtle"))
     PRUI.SetButtonTextColor(
@@ -355,14 +504,12 @@ local function SetCollectionRowSelected(row, selected)
         Theme:Get(selected and "accent" or "text", selected and "gold" or "secondary"))
 
     row.label:ClearAllPoints()
-    row.label:SetPoint("LEFT", row.pruiContent, "LEFT", selected and 15 or 10, 0)
-    row.label:SetPoint("RIGHT", row.pruiContent, "RIGHT", selected and -47 or -8, 0)
+    row.label:SetPoint("LEFT", row.pruiContent, "LEFT", 15, 0)
+    row.label:SetPoint("RIGHT", row.pruiContent, "RIGHT", -8, 0)
     if selected then
         row.selectedRail:Show()
-        row.activeLabel:Show()
     else
         row.selectedRail:Hide()
-        row.activeLabel:Hide()
     end
 end
 
@@ -372,7 +519,7 @@ local function RefreshCollectionPopover(popover)
     local visibleCount = math.min(itemCount, COLLECTION_ROW_POOL_SIZE)
     local maximumOffset = math.max(0, itemCount - COLLECTION_ROW_POOL_SIZE)
     popover.offset = Clamp(popover.offset or 0, 0, maximumOffset)
-    popover:SetHeight(68 + visibleCount * COLLECTION_ROW_HEIGHT)
+    popover:SetHeight(45 + visibleCount * COLLECTION_ROW_HEIGHT)
 
     for poolIndex, row in ipairs(popover.rows) do
         local item = popover.items[popover.offset + poolIndex]
@@ -415,42 +562,21 @@ local function CreateCollectionPopover(readerFrame)
 
     local strongShadow = Theme:Get("shadow", "strong")
     for _, texture in pairs(popover.pruiShadow or {}) do
-        texture:SetColorTexture(
-            strongShadow[1], strongShadow[2], strongShadow[3], strongShadow[4])
+        Theme:BindColor(texture, "SetColorTexture", strongShadow)
     end
 
-    local headerSurface = popover:CreateTexture(nil, "BACKGROUND", nil, -6)
-    headerSurface:SetPoint("TOPLEFT", popover, "TOPLEFT", 1, -1)
-    headerSurface:SetPoint("TOPRIGHT", popover, "TOPRIGHT", -1, -1)
-    headerSurface:SetHeight(23)
     local actionColor = Theme:Get("bg", "popoverAction")
-    headerSurface:SetColorTexture(
-        actionColor[1], actionColor[2], actionColor[3], actionColor[4])
-
-    local headerLabel = popover:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    headerLabel:SetPoint("LEFT", popover, "TOPLEFT", 9, -13)
-    headerLabel:SetText(L["COLLECTIONS"])
-    SetFontStringColor(headerLabel, Theme:Get("accent", "gold"))
-
-    local headerRule = popover:CreateTexture(nil, "BORDER")
-    headerRule:SetPoint("TOPLEFT", popover, "TOPLEFT", 1, -24)
-    headerRule:SetPoint("TOPRIGHT", popover, "TOPRIGHT", -1, -24)
-    headerRule:SetHeight(1)
-    local elevatedBorder = Theme:Get("border", "elevated")
-    headerRule:SetColorTexture(
-        elevatedBorder[1], elevatedBorder[2], elevatedBorder[3], elevatedBorder[4])
 
     for index = 1, COLLECTION_ROW_POOL_SIZE do
         local row = PRUI.Button(popover, "", {
             height = COLLECTION_ROW_HEIGHT,
             justifyH = "LEFT",
         })
-        row:SetPoint("TOPLEFT", popover, "TOPLEFT", 5, -(28 + (index - 1) * COLLECTION_ROW_HEIGHT))
-        row:SetPoint("TOPRIGHT", popover, "TOPRIGHT", -5, -(28 + (index - 1) * COLLECTION_ROW_HEIGHT))
+        row:SetPoint("TOPLEFT", popover, "TOPLEFT", 5, -(5 + (index - 1) * COLLECTION_ROW_HEIGHT))
+        row:SetPoint("TOPRIGHT", popover, "TOPRIGHT", -5, -(5 + (index - 1) * COLLECTION_ROW_HEIGHT))
         row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         local rowColor = Theme:Get("bg", "popoverRow")
-        row.pruiBackground:SetColorTexture(
-            rowColor[1], rowColor[2], rowColor[3], rowColor[4])
+        Theme:BindColor(row.pruiBackground, "SetColorTexture", rowColor)
         row.label:ClearAllPoints()
         row.label:SetPoint("LEFT", row.pruiContent, "LEFT", 10, 0)
         row.label:SetPoint("RIGHT", row.pruiContent, "RIGHT", -8, 0)
@@ -461,16 +587,8 @@ local function CreateCollectionPopover(readerFrame)
         selectedRail:SetPoint("BOTTOMLEFT", row.pruiContent, "BOTTOMLEFT", 4, 4)
         selectedRail:SetWidth(2)
         local gold = Theme:Get("accent", "gold")
-        selectedRail:SetColorTexture(gold[1], gold[2], gold[3], gold[4])
+        Theme:BindColor(selectedRail, "SetColorTexture", gold)
         row.selectedRail = selectedRail
-
-        local activeLabel = row.pruiContent:CreateFontString(
-            nil, "OVERLAY", "GameFontNormalSmall")
-        activeLabel:SetPoint("RIGHT", row.pruiContent, "RIGHT", -7, 0)
-        activeLabel:SetText(L["ACTIVE"])
-        activeLabel:SetScale(0.80)
-        SetFontStringColor(activeLabel, gold)
-        row.activeLabel = activeLabel
 
         row:SetScript("OnClick", function(button, mouseButton)
             local item = button.item
@@ -485,9 +603,7 @@ local function CreateCollectionPopover(readerFrame)
             popover:Hide()
             ParchmentReader:SetCollection(item.isAll and nil or item.name)
         end)
-        PRUI.AttachTooltip(row, function(button)
-            return button.item and button.item.label
-        end)
+        PRUI.AttachTooltip(row, GetCollectionLabelTooltip)
         popover.rows[index] = row
     end
 
@@ -496,7 +612,7 @@ local function CreateCollectionPopover(readerFrame)
     separator:SetPoint("BOTTOMRIGHT", popover, "BOTTOMRIGHT", -8, 32)
     separator:SetHeight(1)
     local border = Theme:Get("border", "subtle")
-    separator:SetColorTexture(border[1], border[2], border[3], border[4])
+    Theme:BindColor(separator, "SetColorTexture", border)
 
     local addButton = PRUI.Button(popover, L["+  Add Collection"], {
         height = 25,
@@ -504,8 +620,7 @@ local function CreateCollectionPopover(readerFrame)
     })
     addButton:SetPoint("BOTTOMLEFT", popover, "BOTTOMLEFT", 5, 5)
     addButton:SetPoint("BOTTOMRIGHT", popover, "BOTTOMRIGHT", -5, 5)
-    addButton.pruiBackground:SetColorTexture(
-        actionColor[1], actionColor[2], actionColor[3], actionColor[4])
+    Theme:BindColor(addButton.pruiBackground, "SetColorTexture", actionColor)
     PRUI.SetButtonBorderColor(addButton, Theme:Get("accent", "goldDim"))
     PRUI.SetButtonTextColor(addButton, Theme:Get("accent", "gold"))
     addButton.label:ClearAllPoints()
@@ -533,11 +648,13 @@ local function CreateCollectionPopover(readerFrame)
     end)
     popover:HookScript("OnShow", function()
         PRUI.SetButtonSelected(readerFrame.collectionSelector, true)
-        readerFrame.collectionSelector.chevron:SetText("^")
+        SetCollectionChevronExpanded(
+            readerFrame.collectionSelector.chevron, true)
     end)
     popover:HookScript("OnHide", function()
         PRUI.SetButtonSelected(readerFrame.collectionSelector, false)
-        readerFrame.collectionSelector.chevron:SetText("v")
+        SetCollectionChevronExpanded(
+            readerFrame.collectionSelector.chevron, false)
     end)
     popover:Hide()
     return popover
@@ -558,10 +675,13 @@ function ParchmentReader:ToggleCollectionPopover(anchor)
 
     popover.owner = anchor
     popover.offset = 0
-    popover:SetWidth(math.max(160, anchor:GetWidth()))
+    GameTooltip:Hide()
+    anchor.pruiTooltipGeneration = (anchor.pruiTooltipGeneration or 0) + 1
     RefreshCollectionPopover(popover)
     popover:ClearAllPoints()
-    popover:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
+
+    popover:SetPoint("TOPLEFT", frame.sidebarScroll, "TOPLEFT", 0, 0)
+    popover:SetPoint("TOPRIGHT", frame.sidebarScroll, "TOPRIGHT", 0, 0)
     popover:Show()
 end
 
@@ -569,19 +689,62 @@ function ParchmentReader:RefreshCollectionSelector()
     local frame = ParchmentReaderFrame
     if not frame then return end
 
-    local label = self.currentCollection or L["All Books"]
+    local label = self.currentCollection or L["Collections"]
     frame.collectionSelector:SetText(label)
     frame.collectionSelector.fullLabel = label
     local hasCollectionFilter = self.currentCollection ~= nil
+    frame.collectionSelector.pruiSelectedTextColor = Theme:Get(
+        hasCollectionFilter and "accent" or "text",
+        hasCollectionFilter and "gold" or "secondary")
+    frame.collectionSelector.pruiSelectedBorderColor = Theme:Get(
+        hasCollectionFilter and "accent" or "border",
+        hasCollectionFilter and "gold" or "subtle")
+    frame.collectionSelector.pruiHoverBorderColor = hasCollectionFilter
+        and Theme:Get("accent", "gold")
+        or nil
     PRUI.SetButtonTextColor(
         frame.collectionSelector,
         Theme:Get(
             hasCollectionFilter and "accent" or "text",
             hasCollectionFilter and "gold" or "secondary"))
-    frame.collectionSelector.collectionAccent:SetShown(hasCollectionFilter)
+    PRUI.SetButtonBorderColor(
+        frame.collectionSelector,
+        Theme:Get(
+            hasCollectionFilter and "accent" or "border",
+            hasCollectionFilter and "gold" or "subtle"))
     if frame.collectionPopover:IsShown() then
         RefreshCollectionPopover(frame.collectionPopover)
     end
+end
+
+function ParchmentReader:RefreshLibraryViewControls()
+    local frame = ParchmentReaderFrame
+    if not frame or not frame.libraryViewButtons then return end
+
+    local view = self:GetLibraryView()
+    for viewId, button in pairs(frame.libraryViewButtons) do
+        PRUI.SetButtonSelected(button, viewId == view)
+    end
+
+    if ParchmentReaderDB.sidebarCollapsed then
+        HideReaderMenus(frame)
+    end
+    frame.sidebarScroll:ClearAllPoints()
+    frame.sidebarScroll:SetPoint("TOPLEFT", frame.sidebar, "TOPLEFT", 4, -60)
+    frame.sidebarScroll:SetPoint("TOPRIGHT", frame.sidebar, "TOPRIGHT", -4, -60)
+    frame.sidebarScroll:SetPoint("BOTTOMRIGHT", frame.addBookBtn, "TOPRIGHT", 0, 4)
+end
+
+function ParchmentReader:SetLibrarySystemView(view)
+    HideReaderMenus(ParchmentReaderFrame)
+    local normalized = self:SetLibraryView(view)
+    local frame = ParchmentReaderFrame
+    if frame and frame.sidebarScroll then
+        frame.sidebarScroll:SetVerticalScroll(0)
+    end
+    self:RefreshLibraryViewControls()
+    self:RefreshBookList()
+    return normalized
 end
 
 local function BuildBookMoveItems()
@@ -597,8 +760,7 @@ end
 
 local function SetBookMoveRowSelected(row, selected)
     local background = Theme:Get("bg", selected and "popoverAction" or "popoverRow")
-    row.pruiBackground:SetColorTexture(
-        background[1], background[2], background[3], background[4])
+    Theme:BindColor(row.pruiBackground, "SetColorTexture", background)
     PRUI.SetButtonBorderColor(
         row, Theme:Get("border", selected and "elevated" or "subtle"))
     PRUI.SetButtonTextColor(
@@ -677,7 +839,7 @@ local function GetBookMovePopover()
     headerRule:SetPoint("TOPRIGHT", popover, "TOPRIGHT", -1, -27)
     headerRule:SetHeight(1)
     local border = Theme:Get("border", "elevated")
-    headerRule:SetColorTexture(border[1], border[2], border[3], border[4])
+    Theme:BindColor(headerRule, "SetColorTexture", border)
 
     for index = 1, BOOK_MOVE_ROW_POOL_SIZE do
         local row = PRUI.Button(popover, "", {
@@ -706,7 +868,7 @@ local function GetBookMovePopover()
         selectedRail:SetPoint("BOTTOMLEFT", row.pruiContent, "BOTTOMLEFT", 4, 4)
         selectedRail:SetWidth(2)
         local gold = Theme:Get("accent", "gold")
-        selectedRail:SetColorTexture(gold[1], gold[2], gold[3], gold[4])
+        Theme:BindColor(selectedRail, "SetColorTexture", gold)
         row.selectedRail = selectedRail
 
         local currentLabel = row.pruiContent:CreateFontString(
@@ -771,21 +933,36 @@ local function GetBookContextMenu()
 
     menu = PRUI.Panel(UIParent, {
         name = "ParchmentReaderBookContextMenu",
-        color = Theme:Get("bg", "base"),
+        color = Theme:Get("bg", "popover"),
         shadow = true,
     })
-    menu:SetSize(206, 56)
+    menu:SetSize(206, 79)
     PRUI.SetAddonFrameLayer(menu, PRUI.ADDON_FRAME_LEVELS.POPOVER)
     menu:SetClampedToScreen(true)
     menu:EnableMouse(true)
     ParchmentReader:RegisterEscapeClose("ParchmentReaderBookContextMenu")
+    menu.labelMeasure = menu:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    menu.labelMeasure:SetWordWrap(false)
+    menu.labelMeasure:Hide()
+
+    menu.favoriteButton = PRUI.Button(menu, "", {
+        width = 196,
+        height = 23,
+        justifyH = "LEFT",
+    })
+    menu.favoriteButton:SetPoint("TOPLEFT", menu, "TOPLEFT", 5, -5)
+    menu.favoriteButton.label:ClearAllPoints()
+    menu.favoriteButton.label:SetPoint(
+        "LEFT", menu.favoriteButton.pruiContent, "LEFT", 8, 0)
+    menu.favoriteButton.label:SetPoint(
+        "RIGHT", menu.favoriteButton.pruiContent, "RIGHT", -8, 0)
 
     menu.editButton = PRUI.Button(menu, L["Edit Book"], {
         width = 196,
         height = 23,
         justifyH = "LEFT",
     })
-    menu.editButton:SetPoint("TOPLEFT", menu, "TOPLEFT", 5, -5)
+    menu.editButton:SetPoint("TOPLEFT", menu.favoriteButton, "BOTTOMLEFT", 0, 0)
     menu.editButton.label:ClearAllPoints()
     menu.editButton.label:SetPoint("LEFT", menu.editButton.pruiContent, "LEFT", 8, 0)
     menu.editButton.label:SetPoint("RIGHT", menu.editButton.pruiContent, "RIGHT", -8, 0)
@@ -804,6 +981,13 @@ local function GetBookContextMenu()
         local bookKey = menu.bookKey
         menu:Hide()
         ParchmentReader:ShowBookEditor(bookKey)
+    end)
+    menu.favoriteButton:SetScript("OnClick", function()
+        local bookKey = menu.bookKey
+        menu:Hide()
+        if not ParchmentReader.books[bookKey] then return end
+        ParchmentReader:ToggleFavoriteBook(bookKey)
+        ParchmentReader:RefreshBookList()
     end)
     menu.moveButton:SetScript("OnClick", function(button)
         local popover = GetBookMovePopover()
@@ -832,7 +1016,21 @@ local function GetBookContextMenu()
     return menu
 end
 
+local function SizeBookContextMenu(menu)
+    local buttons = {menu.favoriteButton, menu.editButton, menu.moveButton}
+    local textWidth = 0
+    for _, button in ipairs(buttons) do
+        menu.labelMeasure:SetText(button.label:GetText())
+        textWidth = math.max(textWidth, menu.labelMeasure:GetStringWidth())
+    end
+
+    local width = Clamp(math.ceil(textWidth) + 26, 144, 260)
+    menu:SetWidth(width)
+    for _, button in ipairs(buttons) do button:SetWidth(width - 10) end
+end
+
 local function ShowBookContextMenu(bookKey, anchor)
+    GameTooltip:Hide()
     local menu = GetBookContextMenu()
     local movePopover = _G.ParchmentReaderBookMovePopover
     if movePopover then movePopover:Hide() end
@@ -843,6 +1041,9 @@ local function ShowBookContextMenu(bookKey, anchor)
     end
 
     menu.bookKey = bookKey
+    menu.favoriteButton:SetText(ParchmentReader:IsFavoriteBook(bookKey)
+        and L["Remove from Favorites"] or L["Add to Favorites"])
+    SizeBookContextMenu(menu)
     menu.owner = anchor
     menu:ClearAllPoints()
     menu:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 4, 0)
@@ -945,7 +1146,7 @@ local function CreateResizeHandle(frame)
         local dot = handle:CreateTexture(nil, "ARTWORK")
         dot:SetSize(2, 2)
         dot:SetPoint("BOTTOMRIGHT", handle, "BOTTOMRIGHT", -(3 + (index - 1) * 4), 3 + (index - 1) * 4)
-        dot:SetColorTexture(muted[1], muted[2], muted[3], muted[4])
+        Theme:BindColor(dot, "SetColorTexture", muted)
         handle.dots[index] = dot
     end
 
@@ -961,13 +1162,13 @@ local function CreateResizeHandle(frame)
     handle:SetScript("OnEnter", function()
         local goldDim = Theme:Get("accent", "goldDim")
         for _, dot in ipairs(handle.dots) do
-            dot:SetColorTexture(goldDim[1], goldDim[2], goldDim[3], goldDim[4])
+            Theme:BindColor(dot, "SetColorTexture", goldDim)
         end
     end)
     handle:SetScript("OnLeave", function()
         local color = Theme:Get("text", "muted")
         for _, dot in ipairs(handle.dots) do
-            dot:SetColorTexture(color[1], color[2], color[3], color[4])
+            Theme:BindColor(dot, "SetColorTexture", color)
         end
     end)
     PRUI.AttachTooltip(handle, L["Drag to resize"])
@@ -976,24 +1177,32 @@ end
 
 local RefreshBookmarkPopover
 
-local function SetBookmarkPreviewShown(frame, shown)
+function ParchmentReader:RefreshBookmarkPreview()
+    local frame = ParchmentReaderFrame
     local preview = frame and frame.bookmarkPreview
-    local layout = ParchmentReader.readerLayoutMetrics
-    local canPreview = shown
-        and preview
-        and layout
-        and layout.bookKey == ParchmentReader.currentBook
-        and type(layout.content) == "string"
-        and layout.content ~= ""
-
-    if not canPreview then
+    local top, height
+    if preview and preview.previewRequested
+        and frame.bookmarkPopover and frame.bookmarkPopover:IsShown()
+    then
+        top, height = self:GetReaderBookmarkPreviewBounds()
+    end
+    if top == nil then
         if preview then preview:Hide() end
         return
     end
 
-    ParchmentReader:SyncReadingPosition()
-    preview:SetHeight(math.max(14, (layout.lineHeight or 14) + 4))
+    preview:ClearAllPoints()
+    preview:SetPoint("TOPLEFT", frame.contentScroll, "TOPLEFT", 0, -top)
+    preview:SetPoint("TOPRIGHT", frame.contentScroll, "TOPRIGHT", 0, -top)
+    preview:SetHeight(height)
     preview:Show()
+end
+
+local function SetBookmarkPreviewShown(frame, shown)
+    local preview = frame and frame.bookmarkPreview
+    if not preview then return end
+    preview.previewRequested = shown == true
+    ParchmentReader:RefreshBookmarkPreview()
 end
 
 local function CloseBookmarkRename(row, save)
@@ -1060,6 +1269,7 @@ local function CreateBookmarkRow(popover, index)
             width = 24,
             height = 24,
             iconSize = 14,
+            iconRole = "artwork",
             texCoord = {0.08, 0.92, 0.08, 0.92},
         })
     editButton:SetPoint("RIGHT", deleteButton, "LEFT", -3, 0)
@@ -1073,11 +1283,7 @@ local function CreateBookmarkRow(popover, index)
     jumpButton:SetPoint("RIGHT", editButton, "LEFT", -4, 0)
     jumpButton.label:Hide()
     local rowBackground = Theme:Get("bg", "popoverRow")
-    jumpButton.pruiBackground:SetColorTexture(
-        rowBackground[1],
-        rowBackground[2],
-        rowBackground[3],
-        rowBackground[4])
+    Theme:BindColor(jumpButton.pruiBackground, "SetColorTexture", rowBackground)
     row.jumpButton = jumpButton
 
     local nameText = jumpButton.pruiContent:CreateFontString(
@@ -1144,7 +1350,7 @@ local function CreateBookmarkRow(popover, index)
             offset)
         popover.activeBookmarkId = bookmark.id
         ParchmentReader:EndContentSearchNavigation(true)
-        ParchmentReader:ScrollReaderToReadingOffset(offset, true)
+        ParchmentReader:ScrollReaderToBookmarkOffset(offset)
         RefreshBookmarkPopover(popover)
     end)
     editButton:SetScript("OnClick", function()
@@ -1370,11 +1576,13 @@ local function CreateBookmarkPopover(frame, owner)
         ParchmentReader:SyncReadingPosition()
         local layout = ParchmentReader.readerLayoutMetrics
         if not layout or layout.bookKey ~= ParchmentReader.currentBook then return end
+        local offset = ParchmentReader:GetReaderBookmarkAnchor()
+        if offset == nil then return end
 
         local bookmark = ParchmentReader:AddBookmark(
             ParchmentReader.currentBook,
             layout.content,
-            ParchmentReader.currentReadingOffset or 0)
+            offset)
         if not bookmark then return end
 
         popover.activeBookmarkId = bookmark.id
@@ -1500,6 +1708,11 @@ function ParchmentReader:RefreshBookmarkControls()
     end
     frame.bookmarkCount:SetText(#bookmarks > 0 and tostring(#bookmarks) or "")
     frame.bookmarkCount:SetShown(#bookmarks > 0)
+
+    frame.bookmarkButton.icon:ClearAllPoints()
+    local iconOffset = #bookmarks > 0 and -4 or 0
+    frame.bookmarkButton.icon:SetPoint("CENTER", frame.bookmarkButton.pruiContent,
+        "CENTER", iconOffset, iconOffset)
     if not hasBook and frame.bookmarkPopover:IsShown() then
         frame.bookmarkPopover:Hide()
         return
@@ -1509,7 +1722,8 @@ function ParchmentReader:RefreshBookmarkControls()
     end
 end
 
-local TRANSPARENT_BACKGROUND_ALPHA = 0.18
+local LIGHT_TRANSPARENT_PAGE_ALPHA = 0.88
+local LIGHT_TRANSPARENT_BORDER_ALPHA = 0.50
 local TRANSPARENT_BORDER_ALPHA = 0.42
 local TRANSPARENT_SHADOW_ALPHA = 0.28
 local TRANSPARENT_CONTROL_IDLE_ALPHA = 0.40
@@ -1518,22 +1732,23 @@ local READER_PROGRESS_IDLE_HEIGHT = 4
 local READER_PROGRESS_HOVER_HEIGHT = 6
 local READER_PROGRESS_HIT_HEIGHT = 12
 
+local function SetReaderBorderAppearance(surface, transparent, focused)
+    local lightTransparent = transparent and Theme:IsLight()
+    PRUI.SetBorderColor(surface,
+        focused and Theme:Get("accent", "goldDim") or Theme:Get("border", "subtle"),
+        lightTransparent and (focused and 0.80 or LIGHT_TRANSPARENT_BORDER_ALPHA) or nil)
+    local borderAlpha = focused and 1
+        or (transparent and not lightTransparent and TRANSPARENT_BORDER_ALPHA or 1)
+    for _, texture in pairs(surface.pruiBorder or {}) do
+        texture:SetAlpha(borderAlpha)
+    end
+end
+
 function ParchmentReader:RefreshReaderKeyboardFocusVisual()
     local frame = ParchmentReaderFrame
     if not frame or not frame.contentSurface then return end
-
-    local focused = frame.readerKeyboardFocused == true
-    PRUI.SetBorderColor(
-        frame.contentSurface,
-        focused
-            and Theme:Get("accent", "goldDim")
-            or Theme:Get("border", "subtle"))
-
-    local borderAlpha = focused and 1
-        or (frame.readerBackgroundTransparent and TRANSPARENT_BORDER_ALPHA or 1)
-    for _, texture in pairs(frame.contentSurface.pruiBorder or {}) do
-        texture:SetAlpha(borderAlpha)
-    end
+    SetReaderBorderAppearance(frame.contentSurface,
+        frame.readerBackgroundTransparent == true, frame.readerKeyboardFocused == true)
 end
 
 function ParchmentReader:SetReaderKeyboardFocus(focused, consumeCurrentKey)
@@ -1583,24 +1798,29 @@ end
 local function SetReaderSurfaceTransparency(surface, transparent)
     if not surface then return end
 
-    local backgroundAlpha = transparent and TRANSPARENT_BACKGROUND_ALPHA or 1
-    local borderAlpha = transparent and TRANSPARENT_BORDER_ALPHA or 1
-    local shadowAlpha = transparent and TRANSPARENT_SHADOW_ALPHA or 1
-    if ParchmentReaderFrame
-        and surface == ParchmentReaderFrame.contentSurface
-        and ParchmentReaderFrame.readerKeyboardFocused
-    then
-        borderAlpha = 1
-    end
+    local backgroundAlpha = transparent and Theme:TransparentBackgroundAlpha() or 1
+    local frame = ParchmentReaderFrame
+    local readingPage = frame and surface == frame.contentSurface
+    if transparent and Theme:IsLight() and frame
+        and (readingPage or surface == frame.topbar or surface == frame.footer) then
 
+        backgroundAlpha = LIGHT_TRANSPARENT_PAGE_ALPHA
+    end
+    local shadowAlpha = transparent and TRANSPARENT_SHADOW_ALPHA or 1
     if surface.pruiBackground then
-        surface.pruiBackground:SetAlpha(backgroundAlpha)
+
+
+
+        local shellHidden = transparent and Theme:IsLight()
+            and surface == ParchmentReaderFrame
+        surface.pruiBackground:SetAlpha(shellHidden and 0 or backgroundAlpha)
     end
-    if surface.pruiBorder then
-        for _, texture in pairs(surface.pruiBorder) do
-            texture:SetAlpha(borderAlpha)
-        end
+    PRUI.SetPaperSurfaceAlpha(surface, backgroundAlpha)
+    for _, texture in ipairs(surface.pruiPaperEdges or {}) do
+        texture:SetAlpha(backgroundAlpha)
     end
+    SetReaderBorderAppearance(surface, transparent,
+        readingPage and frame.readerKeyboardFocused == true)
     if surface.pruiShadow then
         for _, texture in pairs(surface.pruiShadow) do
             texture:SetAlpha(shadowAlpha)
@@ -1678,7 +1898,7 @@ local function ConfigureReaderProgressSeek(progressBar)
     local thumb = progressBar:CreateTexture(nil, "OVERLAY")
     thumb:SetSize(8, 8)
     local gold = Theme:Get("accent", "gold")
-    thumb:SetColorTexture(gold[1], gold[2], gold[3], gold[4])
+    Theme:BindColor(thumb, "SetColorTexture", gold)
     thumb:Hide()
     progressBar.thumb = thumb
     progressBar:SetValue(progressBar.value or 0)
@@ -1759,6 +1979,7 @@ local function IsReaderInteractionActive(frame)
         or IsShownAndMouseOver(_G.ParchmentReaderCollectionContextMenu)
         or IsShownAndMouseOver(_G.ParchmentReaderBookContextMenu)
         or IsShownAndMouseOver(_G.ParchmentReaderBookMovePopover)
+        or IsShownAndMouseOver(_G.ParchmentReaderRecentContextMenu)
 end
 
 function ParchmentReader:RefreshReaderTransparency()
@@ -1993,6 +2214,7 @@ function ParchmentReader:CreateFloatingLauncher()
             width = FLOATING_LAUNCHER_SIZE - 4,
             height = FLOATING_LAUNCHER_SIZE - 4,
             iconSize = 25,
+            iconRole = "artwork",
             texCoord = {0.08, 0.92, 0.08, 0.92},
         })
     button:SetPoint("CENTER")
@@ -2144,7 +2366,7 @@ function ParchmentReader:CreateReaderFrame()
     brandIcon:SetTexture("Interface\\Icons\\INV_Misc_Book_09")
     brandIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     local gold = Theme:Get("accent", "gold")
-    brandIcon:SetVertexColor(gold[1], gold[2], gold[3], gold[4])
+    Theme:BindIconColor(brandIcon, gold, "artwork")
 
     local addonLabel = topbar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     addonLabel:SetPoint("LEFT", brandSlot, "RIGHT", 3, 0)
@@ -2199,13 +2421,12 @@ function ParchmentReader:CreateReaderFrame()
 
     local settingsButton = PRUI.IconButton(
         topbar,
-        "Interface\\Icons\\INV_Misc_Gear_01",
+        "Interface\\AddOns\\ParchmentReader\\Assets\\SettingsCog",
         L["Settings"],
         {
             width = 24,
             height = 24,
             iconSize = 16,
-            texCoord = {0.12, 0.88, 0.12, 0.88},
         })
     settingsButton:SetPoint("RIGHT", minimizeButton, "LEFT", -3, 0)
     settingsButton:SetScript("OnClick", function()
@@ -2213,13 +2434,24 @@ function ParchmentReader:CreateReaderFrame()
     end)
     frame.settingsButton = settingsButton
 
+    local themeButton = PRUI.IconButton(topbar,
+        "Interface\\AddOns\\ParchmentReader\\Assets\\ThemeSun", nil,
+        {width = 24, height = 24, iconSize = 16})
+    themeButton:SetPoint("RIGHT", settingsButton, "LEFT", -3, 0)
+    themeButton:SetScript("OnClick", function()
+        ParchmentReader:ToggleTheme()
+    end)
+    PRUI.AttachTooltip(themeButton, L["Toggle theme"])
+    frame.themeButton = themeButton
+    ParchmentReader:RefreshThemeButton(frame)
+
     local helpButton = PRUI.IconButton(topbar, nil, L["Keyboard Help"], {
         width = 24,
         height = 24,
         iconText = "?",
         fontObject = "GameFontNormalSmall",
     })
-    helpButton:SetPoint("RIGHT", settingsButton, "LEFT", -3, 0)
+    helpButton:SetPoint("RIGHT", themeButton, "LEFT", -3, 0)
     helpButton:SetScript("OnClick", function()
         if frame.searchBox then
             frame.searchBox:ClearFocus()
@@ -2270,6 +2502,7 @@ function ParchmentReader:CreateReaderFrame()
     local contentSurface = PRUI.Panel(frame, {color = Theme:Get("bg", "surface")})
     contentSurface:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", 0, 0)
     contentSurface:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", 0, 0)
+    PRUI.ApplyPaperSurface(contentSurface, true)
     frame.contentSurface = contentSurface
     frame.parchment = contentSurface
     frame.readerTransparencySurfaces = {
@@ -2280,54 +2513,38 @@ function ParchmentReader:CreateReaderFrame()
         contentSurface,
     }
 
-    local collectionSelector = PRUI.Button(sidebar, L["All Books"], {
-        height = 32,
+    local collectionSelector = PRUI.Button(sidebar, L["Collections"], {
+        height = 24,
         justifyH = "LEFT",
     })
-    collectionSelector:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 4, -32)
+    collectionSelector:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 82, -32)
     collectionSelector:SetPoint("TOPRIGHT", sidebar, "TOPRIGHT", -4, -32)
-    local collectionBackground = Theme:Get("bg", "popoverAction")
-    collectionSelector.pruiBackground:SetColorTexture(
-        collectionBackground[1],
-        collectionBackground[2],
-        collectionBackground[3],
-        collectionBackground[4])
-    PRUI.SetButtonBorderColor(collectionSelector, Theme:Get("accent", "goldDim"))
     collectionSelector.label:ClearAllPoints()
-    collectionSelector.label:SetPoint("BOTTOMLEFT", collectionSelector.pruiContent, "BOTTOMLEFT", 12, 4)
-    collectionSelector.label:SetPoint("BOTTOMRIGHT", collectionSelector.pruiContent, "BOTTOMRIGHT", -24, 4)
+    collectionSelector.label:SetPoint("LEFT", collectionSelector.pruiContent, "LEFT", 8, 0)
+    collectionSelector.label:SetPoint("RIGHT", collectionSelector.pruiContent, "RIGHT", -20, 0)
     collectionSelector.label:SetJustifyH("LEFT")
 
-    local collectionEyebrow = collectionSelector.pruiContent:CreateFontString(
-        nil, "OVERLAY", "GameFontNormalSmall")
-    collectionEyebrow:SetPoint("TOPLEFT", collectionSelector.pruiContent, "TOPLEFT", 12, -3)
-    collectionEyebrow:SetPoint("TOPRIGHT", collectionSelector.pruiContent, "TOPRIGHT", -24, -3)
-    collectionEyebrow:SetJustifyH("LEFT")
-    collectionEyebrow:SetText(L["COLLECTION"])
-    collectionEyebrow:SetScale(0.80)
-    SetFontStringColor(collectionEyebrow, Theme:Get("text", "muted"))
-
-    local collectionAccent = collectionSelector.pruiContent:CreateTexture(nil, "ARTWORK")
-    collectionAccent:SetPoint("TOPLEFT", collectionSelector.pruiContent, "TOPLEFT", 4, -4)
-    collectionAccent:SetPoint("BOTTOMLEFT", collectionSelector.pruiContent, "BOTTOMLEFT", 4, 4)
-    collectionAccent:SetWidth(2)
-    local collectionGold = Theme:Get("accent", "gold")
-    collectionAccent:SetColorTexture(
-        collectionGold[1], collectionGold[2], collectionGold[3], collectionGold[4])
-    collectionAccent:Hide()
-    collectionSelector.collectionAccent = collectionAccent
-
-    local chevron = collectionSelector.pruiContent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    chevron:SetPoint("BOTTOMRIGHT", collectionSelector.pruiContent, "BOTTOMRIGHT", -8, 6)
-    chevron:SetText("v")
-    SetFontStringColor(chevron, Theme:Get("text", "muted"))
+    local chevron = CreateFrame("Frame", nil, collectionSelector.pruiContent)
+    chevron:SetSize(8, 6)
+    chevron:SetPoint("RIGHT", collectionSelector.pruiContent, "RIGHT", -7, 0)
+    chevron.left = chevron:CreateTexture(nil, "ARTWORK")
+    chevron.left:SetTexture("Interface\\Buttons\\WHITE8X8")
+    chevron.left:SetSize(5, 1)
+    chevron.left:SetPoint("CENTER", chevron, "CENTER", -1.75, 0)
+    chevron.right = chevron:CreateTexture(nil, "ARTWORK")
+    chevron.right:SetTexture("Interface\\Buttons\\WHITE8X8")
+    chevron.right:SetSize(5, 1)
+    chevron.right:SetPoint("CENTER", chevron, "CENTER", 1.75, 0)
+    local chevronColor = Theme:Get("text", "muted")
+    SetTextureColor(chevron.left, chevronColor)
+    SetTextureColor(chevron.right, chevronColor)
+    SetCollectionChevronExpanded(chevron, false)
     collectionSelector.chevron = chevron
+    collectionSelector.pruiSelectedStateColor = Theme:Get("state", "clear")
     collectionSelector:SetScript("OnClick", function(button)
         ParchmentReader:ToggleCollectionPopover(button)
     end)
-    PRUI.AttachTooltip(collectionSelector, function(button)
-        return button.fullLabel
-    end)
+    PRUI.AttachTooltip(collectionSelector, GetCollectionLabelTooltip)
     frame.collectionSelector = collectionSelector
 
     local searchBox, searchContainer = PRUI.EditBox(sidebar, {
@@ -2343,7 +2560,6 @@ function ParchmentReader:CreateReaderFrame()
     searchContainer:SetHeight(24)
     searchBox:ClearAllPoints()
     searchBox:SetPoint("TOPLEFT", searchContainer, "TOPLEFT", 1, -1)
-    searchBox:SetPoint("BOTTOMRIGHT", searchContainer, "BOTTOMRIGHT", -57, 1)
     searchBox:SetMaxLetters(80)
 
     local searchHint = searchBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -2375,6 +2591,8 @@ function ParchmentReader:CreateReaderFrame()
     searchContentButton.label:ClearAllPoints()
     searchContentButton.label:SetPoint("CENTER")
     PRUI.SetButtonIdleBackgroundAlpha(searchContentButton, 0.35)
+    searchBox:SetPoint(
+        "BOTTOMRIGHT", searchContentButton, "BOTTOMLEFT", 0, -1)
     local function SetContentSearchEnabled(enabled)
         PRUI.SetButtonTextColor(
             searchContentButton,
@@ -2393,7 +2611,7 @@ function ParchmentReader:CreateReaderFrame()
     PositionSearchContentButton(false)
     searchContentButton:SetScript("OnClick", function(button)
         SetContentSearchEnabled(button.pruiSelected ~= true)
-        if frame.sidebarScroll then
+        if not frame.suppressBookListRefresh and frame.sidebarScroll then
             frame.sidebarScroll:SetVerticalScroll(0)
             ParchmentReader:RefreshBookList()
         end
@@ -2412,7 +2630,7 @@ function ParchmentReader:CreateReaderFrame()
             clearSearchButton:Hide()
         end
         PositionSearchContentButton(hasText)
-        if frame.sidebarScroll then
+        if not frame.suppressBookListRefresh and frame.sidebarScroll then
             frame.sidebarScroll:SetVerticalScroll(0)
             ParchmentReader:RefreshBookList()
         end
@@ -2438,15 +2656,71 @@ function ParchmentReader:CreateReaderFrame()
     frame.clearSearchButton = clearSearchButton
     frame.searchContentButton = searchContentButton
 
+    local libraryViewGroup = CreateFrame("Frame", nil, sidebar)
+    libraryViewGroup:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 4, -32)
+    libraryViewGroup:SetSize(72, 24)
+    local libraryViewButtons = {}
+    local libraryViewDefinitions = {
+        {
+            id = "all",
+            icon = "Interface\\AddOns\\ParchmentReader\\Assets\\LibraryBook",
+            tooltip = L["Library"],
+        },
+        {
+            id = "favorites",
+            icon = "Interface\\AddOns\\ParchmentReader\\Assets\\FavoriteOutline",
+            tooltip = L["Favorites"],
+        },
+        {
+            id = "recent",
+            icon = "Interface\\AddOns\\ParchmentReader\\Assets\\RecentHistory",
+            tooltip = L["Recent"],
+        },
+    }
+    for index, definition in ipairs(libraryViewDefinitions) do
+        local viewId = definition.id
+        local button = PRUI.IconButton(
+            libraryViewGroup,
+            definition.icon,
+            viewId ~= "recent" and definition.tooltip or nil,
+            {
+                width = 24,
+                height = 24,
+                iconSize = 14,
+                iconRole = definition.iconRole,
+                texCoord = definition.texCoord,
+            })
+        button:SetPoint("TOPLEFT", libraryViewGroup, "TOPLEFT", (index - 1) * 24, 0)
+        button.pruiSelectedStateColor = Theme:Get("state", "active")
+        button.pruiSelectedBorderColor = Theme:Get("accent", "gold")
+        if viewId == "recent" then
+            button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+            PRUI.AttachTooltip(button, function()
+                local menu = _G.ParchmentReaderRecentContextMenu
+                if menu and menu:IsShown() then return end
+                return definition.tooltip
+            end)
+        end
+        button:SetScript("OnClick", function(self, mouseButton)
+            if viewId == "recent" and mouseButton == "RightButton" then
+                ParchmentReader:ShowRecentContextMenu(self)
+            else
+                ParchmentReader:SetLibrarySystemView(viewId)
+            end
+        end)
+        libraryViewButtons[viewId] = button
+    end
+    frame.libraryViewGroup = libraryViewGroup
+    frame.libraryViewButtons = libraryViewButtons
+
     local collapsedLibraryButton = PRUI.IconButton(
         sidebar,
-        "Interface\\Icons\\INV_Misc_Book_11",
+        "Interface\\AddOns\\ParchmentReader\\Assets\\LibraryBook",
         L["Exit Compact Mode — show library"],
         {
             width = 20,
             height = 22,
             iconSize = 14,
-            texCoord = {0.08, 0.92, 0.08, 0.92},
         })
     collapsedLibraryButton:SetPoint("TOP", sidebar, "TOP", 0, -4)
     collapsedLibraryButton:SetScript("OnClick", function()
@@ -2456,16 +2730,15 @@ function ParchmentReader:CreateReaderFrame()
 
     local collapsedQuickNoteButton = PRUI.IconButton(
         sidebar,
-        "Interface\\Icons\\INV_Misc_Note_01",
+        "Interface\\AddOns\\ParchmentReader\\Assets\\QuickNoteFeather",
         L["Quick Note"],
         {
             width = 20,
             height = 22,
             iconSize = 14,
-            texCoord = {0.08, 0.92, 0.08, 0.92},
         })
     collapsedQuickNoteButton:SetPoint(
-        "TOP", collapsedLibraryButton, "BOTTOM", 0, -6)
+        "TOP", collapsedLibraryButton, "BOTTOM", 0, -14)
     PRUI.SetButtonBorderColor(
         collapsedQuickNoteButton, Theme:Get("accent", "goldDim"))
     PRUI.SetButtonTextColor(
@@ -2484,11 +2757,7 @@ function ParchmentReader:CreateReaderFrame()
     addBookButton:SetPoint("BOTTOMRIGHT", sidebar, "BOTTOMRIGHT", -4, 32)
     addBookButton.label:SetJustifyH("LEFT")
     local addBookBackground = Theme:Get("bg", "popoverAction")
-    addBookButton.pruiBackground:SetColorTexture(
-        addBookBackground[1],
-        addBookBackground[2],
-        addBookBackground[3],
-        addBookBackground[4])
+    Theme:BindColor(addBookButton.pruiBackground, "SetColorTexture", addBookBackground)
     PRUI.SetButtonBorderColor(addBookButton, Theme:Get("accent", "goldDim"))
     PRUI.SetButtonTextColor(addBookButton, Theme:Get("accent", "gold"))
     addBookButton:SetScript("OnClick", function()
@@ -2510,7 +2779,8 @@ function ParchmentReader:CreateReaderFrame()
     frame.toggleBtn = toggleButton
 
     local sidebarScroll = CreateFrame("ScrollFrame", nil, sidebar)
-    sidebarScroll:SetPoint("TOPLEFT", collectionSelector, "BOTTOMLEFT", 0, -4)
+    sidebarScroll:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 4, -60)
+    sidebarScroll:SetPoint("TOPRIGHT", sidebar, "TOPRIGHT", -4, -60)
     sidebarScroll:SetPoint("BOTTOMRIGHT", addBookButton, "TOPRIGHT", 0, 4)
     sidebarScroll:SetClipsChildren(true)
     sidebarScroll:EnableMouseWheel(true)
@@ -2521,34 +2791,36 @@ function ParchmentReader:CreateReaderFrame()
     frame.bookListScroll = bookListScroll
     frame.bookButtons = {}
 
-    local emptyState = CreateFrame("Frame", nil, sidebarScroll)
-    emptyState:SetPoint("TOPLEFT", sidebarScroll, "TOPLEFT", 10, -20)
-    emptyState:SetPoint("TOPRIGHT", sidebarScroll, "TOPRIGHT", -10, -20)
-    emptyState:SetHeight(154)
+    local emptyState = CreateFrame("Frame", nil, bookListScroll)
+    emptyState:SetPoint("TOPLEFT", bookListScroll, "TOPLEFT", 10, 0)
+    emptyState:SetPoint("TOPRIGHT", bookListScroll, "TOPRIGHT", -10, 0)
+    emptyState:SetHeight(104)
     emptyState:SetFrameLevel(sidebarScroll:GetFrameLevel() + 2)
 
     local emptyIcon = emptyState:CreateTexture(nil, "ARTWORK")
-    emptyIcon:SetSize(32, 32)
+    emptyIcon:SetSize(24, 24)
     emptyIcon:SetPoint("TOP", emptyState, "TOP", 0, 0)
     emptyIcon:SetTexture("Interface\\Icons\\INV_Misc_Book_09")
+    Theme:BindIconColor(emptyIcon, nil, "artwork")
     emptyIcon:SetDesaturated(true)
     emptyIcon:SetAlpha(0.55)
 
     local emptyTitle = emptyState:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    emptyTitle:SetPoint("TOPLEFT", emptyState, "TOPLEFT", 2, -42)
-    emptyTitle:SetPoint("TOPRIGHT", emptyState, "TOPRIGHT", -2, -42)
+    emptyTitle:SetPoint("TOPLEFT", emptyState, "TOPLEFT", 2, -28)
+    emptyTitle:SetPoint("TOPRIGHT", emptyState, "TOPRIGHT", -2, -28)
     emptyTitle:SetJustifyH("CENTER")
+    emptyTitle:SetWordWrap(true)
     SetFontStringColor(emptyTitle, Theme:Get("text", "secondary"))
 
     local emptyMessage = emptyState:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    emptyMessage:SetPoint("TOPLEFT", emptyTitle, "BOTTOMLEFT", 0, -6)
-    emptyMessage:SetPoint("TOPRIGHT", emptyTitle, "BOTTOMRIGHT", 0, -6)
+    emptyMessage:SetPoint("TOPLEFT", emptyTitle, "BOTTOMLEFT", 0, -4)
+    emptyMessage:SetPoint("TOPRIGHT", emptyTitle, "BOTTOMRIGHT", 0, -4)
     emptyMessage:SetJustifyH("CENTER")
     emptyMessage:SetJustifyV("TOP")
     emptyMessage:SetSpacing(2)
     SetFontStringColor(emptyMessage, Theme:Get("text", "muted"))
 
-    local emptyAction = PRUI.Button(emptyState, "", {width = 174, height = 22})
+    local emptyAction = PRUI.Button(emptyState, "", {width = 160, height = 22})
     emptyAction:SetPoint("BOTTOM", emptyState, "BOTTOM", 0, 0)
     emptyAction:SetScript("OnClick", function(button)
         if button.action == "clear-search" then
@@ -2556,12 +2828,23 @@ function ParchmentReader:CreateReaderFrame()
             searchBox:SetFocus()
         elseif button.action == "add-book" then
             ParchmentReader:ShowBookEditor(nil)
+        elseif button.action == "show-all-books" then
+            ParchmentReader:SetLibrarySystemView("all")
+        elseif button.action == "clear-collection" then
+            ParchmentReader:SetCollection(nil)
         end
     end)
 
     emptyState.title = emptyTitle
     emptyState.message = emptyMessage
     emptyState.actionButton = emptyAction
+    function emptyState:RefreshLayout()
+        local titleHeight = math.max(12, self.title:GetStringHeight() or 0)
+        local messageHeight = math.max(12, self.message:GetStringHeight() or 0)
+        local desiredHeight = 24 + 4 + titleHeight + 4 + messageHeight + 10 + 22
+        self:SetHeight(math.max(104, desiredHeight))
+        bookListScroll:SetHeight(self:GetHeight())
+    end
     emptyState:Hide()
     frame.bookListEmptyState = emptyState
 
@@ -2572,6 +2855,7 @@ function ParchmentReader:CreateReaderFrame()
     end)
     sidebarScroll:SetScript("OnSizeChanged", function(_, scrollWidth)
         bookListScroll:SetWidth(math.max(1, scrollWidth))
+        if emptyState:IsShown() then emptyState:RefreshLayout() end
         ClampBookListScroll(frame)
     end)
 
@@ -2609,15 +2893,19 @@ function ParchmentReader:CreateReaderFrame()
     local previewFill = bookmarkPreview:CreateTexture(nil, "BACKGROUND")
     previewFill:SetAllPoints()
     local previewGold = Theme:Get("accent", "gold")
-    previewFill:SetColorTexture(
-        previewGold[1], previewGold[2], previewGold[3], 0.10)
+    Theme:BindColor(previewFill, "SetColorTexture", previewGold, 0.20)
 
     local previewRail = bookmarkPreview:CreateTexture(nil, "ARTWORK")
     previewRail:SetPoint("TOPLEFT", bookmarkPreview, "TOPLEFT", 0, 0)
     previewRail:SetPoint("BOTTOMLEFT", bookmarkPreview, "BOTTOMLEFT", 0, 0)
-    previewRail:SetWidth(2)
-    previewRail:SetColorTexture(
-        previewGold[1], previewGold[2], previewGold[3], 0.9)
+    previewRail:SetWidth(4)
+    Theme:BindColor(previewRail, "SetColorTexture", previewGold, 0.9)
+
+    local previewUnderline = bookmarkPreview:CreateTexture(nil, "ARTWORK")
+    previewUnderline:SetPoint("BOTTOMLEFT", bookmarkPreview, "BOTTOMLEFT", 8, 0)
+    previewUnderline:SetPoint("BOTTOMRIGHT", bookmarkPreview, "BOTTOMRIGHT", -8, 0)
+    previewUnderline:SetHeight(1)
+    Theme:BindColor(previewUnderline, "SetColorTexture", previewGold, 0.65)
 
     bookmarkPreview:Hide()
     frame.bookmarkPreview = bookmarkPreview
@@ -2687,13 +2975,12 @@ function ParchmentReader:CreateReaderFrame()
 
     local bookmarkButton = PRUI.IconButton(
         navigation,
-        "Interface\\Icons\\INV_Misc_Note_03",
+        "Interface\\AddOns\\ParchmentReader\\Assets\\BookmarkRibbon",
         nil,
         {
             width = 24,
             height = 22,
             iconSize = 14,
-            texCoord = {0.08, 0.92, 0.08, 0.92},
         })
     bookmarkButton:SetPoint("RIGHT", navigation, "RIGHT", 0, 0)
     nextButton:ClearAllPoints()
@@ -2828,8 +3115,12 @@ function ParchmentReader:CreateReaderFrame()
         closeButton,
         minimizeButton,
         settingsButton,
+        themeButton,
         helpButton,
         collectionSelector,
+        libraryViewButtons.all,
+        libraryViewButtons.favorites,
+        libraryViewButtons.recent,
         clearSearchButton,
         searchContentButton,
         collapsedLibraryButton,
@@ -2858,7 +3149,7 @@ function ParchmentReader:CreateReaderFrame()
 
     function frame:RefreshTitleAreaLayout()
         local rightControl = ParchmentReaderDB.sidebarCollapsed
-            and minimizeButton
+            and themeButton
             or helpButton
         titleArea:ClearAllPoints()
         titleArea:SetPoint("LEFT", pinButton, "RIGHT", 8, 0)
@@ -2889,12 +3180,7 @@ function ParchmentReader:CreateReaderFrame()
         ParchmentReader:SyncReadingPosition()
         ParchmentReader:SaveReaderPosition()
         ParchmentReader:StopReaderScrollAnimation()
-        frame.collectionPopover:Hide()
-        frame.bookmarkPopover:Hide()
-        local contextMenu = _G.ParchmentReaderCollectionContextMenu
-        if contextMenu then contextMenu:Hide() end
-        local bookMenu = _G.ParchmentReaderBookContextMenu
-        if bookMenu then bookMenu:Hide() end
+        HideReaderMenus(frame)
         if not ParchmentReader.readerMinimized then
             ParchmentReader:HideFloatingLauncher()
         end
@@ -2933,7 +3219,7 @@ function ParchmentReader:ActivateBookSearchResult(bookKey)
     local frame = ParchmentReaderFrame
     if not frame or not bookKey or not self.books[bookKey] then return false end
 
-    if not self:LoadBook(bookKey) then return false end
+    if not self:ActivateLibraryBook(bookKey) then return false end
     local contentSearchEnabled = frame.searchContentButton
         and frame.searchContentButton.pruiSelected == true
     local phrase = contentSearchEnabled
@@ -2959,6 +3245,7 @@ function ParchmentReader:RefreshBookList()
         button:Hide()
     end
     frame.firstSearchResultKey = nil
+    self:RefreshLibraryViewControls()
 
     local searchText = frame.searchBox and frame.searchBox:GetText()
     local searchTerms = self:GetSearchTerms(searchText)
@@ -2972,25 +3259,37 @@ function ParchmentReader:RefreshBookList()
         self:PruneIndex(self.books)
     end
 
-    local sortedBooks = {}
-    for bookKey, bookData in pairs(self.books) do
-        sortedBooks[#sortedBooks + 1] = {
-            key = bookKey,
-            data = bookData,
-            normalizedTitle = self:NormalizeSearchText(bookData.title),
-        }
+    local view = self:GetLibraryView()
+    local orderedBooks = {}
+    if view == "recent" then
+        for _, bookKey in ipairs(self:GetRecentBookKeys()) do
+            local bookData = self.books[bookKey]
+            if bookData then
+                orderedBooks[#orderedBooks + 1] = {key = bookKey, data = bookData}
+            end
+        end
+    else
+        for bookKey, bookData in pairs(self.books) do
+            if view == "all" or self:IsFavoriteBook(bookKey) then
+                orderedBooks[#orderedBooks + 1] = {
+                    key = bookKey,
+                    data = bookData,
+                    normalizedTitle = self:NormalizeSearchText(bookData.title),
+                }
+            end
+        end
+        table.sort(orderedBooks, function(a, b)
+            return CompareNormalizedBookTitles(
+                a.data.title,
+                a.normalizedTitle,
+                b.data.title,
+                b.normalizedTitle)
+        end)
     end
-    table.sort(sortedBooks, function(a, b)
-        return CompareNormalizedBookTitles(
-            a.data.title,
-            a.normalizedTitle,
-            b.data.title,
-            b.normalizedTitle)
-    end)
 
     local visibleIndex = 1
     local buttonHeight = 26
-    for _, entry in ipairs(sortedBooks) do
+    for _, entry in ipairs(orderedBooks) do
         local bookKey = entry.key
         local bookData = entry.data
         local visible = not self.currentCollection
@@ -3013,15 +3312,25 @@ function ParchmentReader:RefreshBookList()
                 button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
                 button.label:ClearAllPoints()
                 button.label:SetPoint("LEFT", button.pruiContent, "LEFT", 18, 0)
-                button.label:SetPoint("RIGHT", button.pruiContent, "RIGHT", -6, 0)
+                button.label:SetPoint("RIGHT", button.pruiContent, "RIGHT", -8, 0)
                 button.label:SetJustifyH("LEFT")
 
                 local activeDot = button.pruiContent:CreateTexture(nil, "ARTWORK")
                 activeDot:SetSize(5, 5)
                 activeDot:SetPoint("LEFT", button.pruiContent, "LEFT", 7, 0)
                 local gold = Theme:Get("accent", "gold")
-                activeDot:SetColorTexture(gold[1], gold[2], gold[3], gold[4])
+                Theme:BindColor(activeDot, "SetColorTexture", gold)
                 button.activeDot = activeDot
+
+                local favoriteMarker = button.pruiContent:CreateTexture(
+                    nil, "ARTWORK")
+                favoriteMarker:SetSize(13, 13)
+                favoriteMarker:SetPoint("RIGHT", button.pruiContent, "RIGHT", -4, 0)
+                favoriteMarker:SetTexture(
+                    "Interface\\AddOns\\ParchmentReader\\Assets\\FavoriteFilled")
+                Theme:BindIconColor(favoriteMarker, Theme:Get("accent", "gold"))
+                favoriteMarker:Hide()
+                button.favoriteMarker = favoriteMarker
 
                 button:SetScript("OnClick", function(bookButton, mouseButton)
                     local data = ParchmentReader.books[bookButton.bookKey]
@@ -3036,26 +3345,28 @@ function ParchmentReader:RefreshBookList()
                     end
                 end)
                 button:HookScript("OnEnter", function(bookButton)
+                    local menu = _G.ParchmentReaderBookContextMenu
+                    if menu and menu:IsShown() then return end
                     local data = ParchmentReader.books[bookButton.bookKey]
                     if not data then return end
                     GameTooltip:SetOwner(bookButton, "ANCHOR_RIGHT")
                     GameTooltip:ClearLines()
                     GameTooltip:SetText(data.title)
                     if not ParchmentReader.currentCollection and data.collection then
-                        local accent = Theme:Get("accent", "gold")
+                        local accent = NATIVE_TOOLTIP_COLORS.collection
                         GameTooltip:AddLine(data.collection, accent[1], accent[2], accent[3])
                     end
                     local saved = ParchmentReaderDB.customBooks
                         and ParchmentReaderDB.customBooks[bookButton.bookKey]
                     if saved and saved.createdAt then
-                        local muted = Theme:Get("text", "muted")
+                        local muted = NATIVE_TOOLTIP_COLORS.date
                         GameTooltip:AddLine(
                             date("%Y-%m-%d", saved.createdAt),
                             muted[1],
                             muted[2],
                             muted[3])
                     end
-                    local secondary = Theme:Get("text", "secondary")
+                    local secondary = NATIVE_TOOLTIP_COLORS.action
                     GameTooltip:AddLine(
                         L["Right-click for book actions"],
                         secondary[1],
@@ -3080,6 +3391,12 @@ function ParchmentReader:RefreshBookList()
             button:SetPoint("TOPRIGHT", frame.bookListScroll, "TOPRIGHT", 0, -(visibleIndex - 1) * buttonHeight)
             button:SetHeight(buttonHeight)
             button:SetText(bookData.title)
+            local isFavorite = self:IsFavoriteBook(bookKey)
+            button.favoriteMarker:SetShown(isFavorite)
+            button.label:ClearAllPoints()
+            button.label:SetPoint("LEFT", button.pruiContent, "LEFT", 18, 0)
+            button.label:SetPoint(
+                "RIGHT", button.pruiContent, "RIGHT", isFavorite and -22 or -8, 0)
             local isCurrent = self.currentBook == bookKey
             PRUI.SetButtonSelected(button, isCurrent)
             if isCurrent then
@@ -3097,12 +3414,61 @@ function ParchmentReader:RefreshBookList()
     frame.bookListScroll:SetWidth(math.max(1, frame.sidebarScroll:GetWidth()))
     if visibleIndex == 1 then
         local emptyState = frame.bookListEmptyState
-        if #searchTerms > 0 then
+        local globalViewHasBooks = self:HasBooksInLibraryView(view)
+        local displaySearchText = strtrim(searchText or "")
+        if view == "favorites" and not globalViewHasBooks then
+            emptyState.title:SetText(L["No favorite books yet"])
+            emptyState.message:SetText(
+                L["Right-click a book and choose Add to Favorites."])
+            emptyState.actionButton:SetText(L["Show Library"])
+            emptyState.actionButton.action = "show-all-books"
+        elseif view == "recent" and not globalViewHasBooks then
+            emptyState.title:SetText(L["No recent books yet"])
+            emptyState.message:SetText(
+                L["Books you open appear here, newest first."])
+            emptyState.actionButton:SetText(L["Show Library"])
+            emptyState.actionButton.action = "show-all-books"
+        elseif self.currentCollection and globalViewHasBooks and hasSearch then
             emptyState.title:SetText(L["No books found"])
-            if self.currentCollection then
-                emptyState.message:SetText(string.format(
-                    L["No books in |cFFD1AD61%s|r match this search."],
-                    self.currentCollection))
+            if view == "favorites" then
+                Theme:SetText(emptyState.message, L["No favorite books in |cFFD1AD61%s|r match \"%s\"."],
+                self.currentCollection,
+                    displaySearchText)
+            elseif view == "recent" then
+                Theme:SetText(emptyState.message, L["No recent books in |cFFD1AD61%s|r match \"%s\"."],
+                self.currentCollection,
+                    displaySearchText)
+            else
+                Theme:SetText(emptyState.message, L["No books in |cFFD1AD61%s|r match \"%s\"."],
+                self.currentCollection,
+                    displaySearchText)
+            end
+            emptyState.actionButton:SetText(L["All Collections"])
+            emptyState.actionButton.action = "clear-collection"
+        elseif view == "favorites"
+            and self.currentCollection
+            and globalViewHasBooks
+        then
+            emptyState.title:SetText(L["No favorites in this collection"])
+            Theme:SetText(emptyState.message, L["Favorite books from |cFFD1AD61%s|r will appear here."],
+                self.currentCollection)
+            emptyState.actionButton:SetText(L["All Collections"])
+            emptyState.actionButton.action = "clear-collection"
+        elseif view == "recent"
+            and self.currentCollection
+            and globalViewHasBooks
+        then
+            emptyState.title:SetText(L["No recent books in this collection"])
+            Theme:SetText(emptyState.message, L["Recent books from |cFFD1AD61%s|r will appear here."],
+                self.currentCollection)
+            emptyState.actionButton:SetText(L["All Collections"])
+            emptyState.actionButton.action = "clear-collection"
+        elseif hasSearch then
+            emptyState.title:SetText(L["No books found"])
+            if view == "favorites" then
+                emptyState.message:SetText(L["No favorite books match this search."])
+            elseif view == "recent" then
+                emptyState.message:SetText(L["No recent books match this search."])
             else
                 emptyState.message:SetText(includeContent
                     and L["Try another title, collection, or text passage, or clear the search."]
@@ -3123,6 +3489,7 @@ function ParchmentReader:RefreshBookList()
             emptyState.actionButton:SetText(L["+  Add First Book"])
             emptyState.actionButton.action = "add-book"
         end
+        emptyState:RefreshLayout()
         emptyState:Show()
     else
         frame.bookListEmptyState:Hide()

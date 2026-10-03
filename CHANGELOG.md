@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.0.0 — Unreleased
+
+- Added Library, Favorites, and Recent views. Favorite books keep their star
+  when moved or renamed; Recent remembers the last 20 explicitly opened books
+  and can be cleared without changing the library or reading progress.
+- Added safe title renaming in Edit Book, preserving bookmarks, reading
+  positions, favorites, and recent history. Titles remain unique per collection.
+- Added Light Parchment and textured Warm Parchment alongside Azeroth Glass.
+  Themes apply live across the reader, editor, notes, and settings; the sun/moon
+  switch can use independently chosen themes.
+- Reorganized Settings into Reading, Appearance, Controls, and General, with
+  theme previews, a live font sample, and synchronized size fields and sliders.
+- Improved the editor's collection picker with scrolling, paging, and search
+  for larger collection lists, while protecting open drafts during collection
+  changes and live theme updates.
+- Added Resume Last Quick Note and its optional shortcut. Continue the same
+  saved note in its current collection, save changes, or start a new note with
+  protection for unsaved drafts and conflicting changes.
+- Added book, star, feather, cog, history, and bookmark icons that follow the
+  selected theme, including Compact Mode controls and the bookmark counter.
+- Fixed stale editor confirmations so they cannot discard a newer draft.
+- Aligned bookmark previews and **+ Here** to the first fully visible text row,
+  including after content-search jumps; bookmark navigation restores that row.
+- Fixed Reset to Defaults during combat so a blocked reset leaves all settings
+  unchanged.
+
 ## 1.3.0 — 2026-09-11
 
 - Added an optional **Aa** search scope that finds a complete phrase inside book

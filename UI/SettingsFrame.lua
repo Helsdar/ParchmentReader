@@ -4,6 +4,7 @@ local READER_BINDING = "PARCHMENTREADER_TOGGLE_READER"
 local COMPACT_BINDING = "PARCHMENTREADER_TOGGLE_COMPACT"
 local MINIMIZE_BINDING = "PARCHMENTREADER_TOGGLE_MINIMIZE"
 local QUICK_NOTE_BINDING = "PARCHMENTREADER_QUICK_NOTE"
+local RESUME_QUICK_NOTE_BINDING = "PARCHMENTREADER_RESUME_QUICK_NOTE"
 local ADDON_NAME = "ParchmentReader"
 local L = ParchmentReader.L
 
@@ -54,7 +55,8 @@ local function StopBindingCapture(frame, consumeCurrentKey)
 
     local control = frame.bindingControls and frame.bindingControls[action]
     if control then
-        control.setKeyButton:SetText(L["Set Key"])
+        ParchmentReader:RefreshBindingControl(action)
+        ParchmentReader.PRUI.SetButtonSelected(control.setKeyButton, false)
     end
 end
 
@@ -70,6 +72,7 @@ local function StartBindingCapture(frame, action)
     frame:EnableKeyboard(true)
     frame:SetPropagateKeyboardInput(false)
     frame.bindingControls[action].setKeyButton:SetText(L["Press a key…"])
+    ParchmentReader.PRUI.SetButtonSelected(frame.bindingControls[action].setKeyButton, true)
 end
 
 local function BuildBindingKey(key)
@@ -148,7 +151,7 @@ function ParchmentReader:RefreshBindingControl(action)
     if key2 then
         value = value .. " / " .. FormatBindingKey(key2)
     end
-    control.bindingValue:SetText(value)
+    if frame.capturingBindingAction ~= action then control.bindingValue:SetText(value) end
     if key1 or key2 then
         control.clearKeyButton:Enable()
     else
@@ -161,6 +164,7 @@ function ParchmentReader:RefreshAddonBindingControls()
     self:RefreshBindingControl(COMPACT_BINDING)
     self:RefreshBindingControl(MINIMIZE_BINDING)
     self:RefreshBindingControl(QUICK_NOTE_BINDING)
+    self:RefreshBindingControl(RESUME_QUICK_NOTE_BINDING)
 end
 
 function ParchmentReader:SetAddonBinding(action, key)
@@ -216,7 +220,7 @@ function ParchmentReader:CreateSettingsFrame()
         name = "ParchmentReaderSettingsFrame",
         title = L["Parchment Reader Settings"],
     })
-    frame:SetSize(440, 740)
+    frame:SetSize(644, 510)
     frame:SetPoint("CENTER")
     frame:EnableMouse(true)
     frame:EnableKeyboard(false)
@@ -225,151 +229,104 @@ function ParchmentReader:CreateSettingsFrame()
     self:RegisterEscapeClose("ParchmentReaderSettingsFrame")
 
 
-    local debugBtn = PRUI.Button(
-        frame.topbar, L["Debug"], {width = 112, height = 24})
-    debugBtn:SetPoint("RIGHT", frame.closeButton, "LEFT", -4, 0)
-    frame.title:ClearAllPoints()
-    frame.title:SetPoint("LEFT", frame.topbar, "LEFT", 12, 0)
-    frame.title:SetPoint("RIGHT", debugBtn, "LEFT", -8, 0)
-    debugBtn:SetScript("OnClick", function()
-        ParchmentReader:ShowDebugInfo()
-    end)
 
-    frame.title:SetPoint("RIGHT", debugBtn, "LEFT", -8, 0)
+    frame.sections, frame.sectionButtons, frame.numericInputs = {}, {}, {}
+    local navigation = PRUI.Panel(frame, {color = Theme:Get("bg", "sidebar")})
+    navigation:SetPoint("TOPLEFT", frame.topbar, "BOTTOMLEFT", 0, 0)
+    navigation:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 45)
+    navigation:SetWidth(144)
+    local footer = PRUI.Panel(frame, {color = Theme:Get("bg", "sidebar")})
+    footer:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 1)
+    footer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, 1)
+    footer:SetHeight(44)
 
-    local yOffset = -58
-    local spacing = 62
-
-
-    local languageText = frame:CreateFontString(
-        nil, "OVERLAY", "GameFontNormalSmall")
-    languageText:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, yOffset)
-    languageText:SetText(L["Interface language:"])
-    PRUI.SetFontStringColor(languageText, Theme:Get("text", "secondary"))
-
-    StaticPopupDialogs["PARCHMENTREADER_RELOAD_LANGUAGE"] = {
-        text = L["Language choice saved.\n\nReload the interface now?"],
-        button1 = L["Reload UI"],
-        button2 = L["Later"],
-        OnAccept = ReloadUI,
-        timeout = 0,
-        whileDead = true,
-        hideOnEscape = true,
-    }
-
-    local languageItems = {
-        {value = "auto", text = L["Auto — WoW client language"]},
-        {value = "enUS", text = L["English"]},
-        {value = "deDE", text = L["Deutsch"]},
-        {value = "frFR", text = L["Français"]},
-        {value = "esES", text = L["Español"]},
-        {value = "ptBR", text = L["Português (Brasil)"]},
-        {value = "ruRU", text = L["Русский"]},
-    }
-    local languageDropdown = PRUI.Dropdown(frame, {
-        name = "ParchmentReaderLanguageDropdown",
-        popoverName = "ParchmentReaderLanguagePopover",
-        width = 300,
-        value = ParchmentReaderDB.interfaceLanguage or "auto",
-        items = languageItems,
-        onValueChanged = function(value)
-            value = ParchmentReader:NormalizeInterfaceLanguage(value)
-            if ParchmentReaderDB.interfaceLanguage == value then return end
-            ParchmentReaderDB.interfaceLanguage = value
-            StaticPopup_Show("PARCHMENTREADER_RELOAD_LANGUAGE")
-        end,
-    })
-    languageDropdown:SetPoint("TOPLEFT", languageText, "BOTTOMLEFT", 0, -5)
-    frame.languageDropdown = languageDropdown
-
-    local languageHint = frame:CreateFontString(
-        nil, "OVERLAY", "GameFontNormalSmall")
-    languageHint:SetPoint("LEFT", languageDropdown, "RIGHT", 8, 0)
-    languageHint:SetPoint("RIGHT", frame, "RIGHT", -20, 0)
-    languageHint:SetJustifyH("LEFT")
-    languageHint:SetText(L["Applied after reload."])
-    PRUI.SetFontStringColor(languageHint, Theme:Get("text", "muted"))
-
-    yOffset = yOffset - spacing
-
-
-    local widthText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    widthText:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, yOffset)
-    widthText:SetText(L["Window width:"])
-    PRUI.SetFontStringColor(widthText, Theme:Get("text", "secondary"))
-
-    local widthSlider = PRUI.Slider(frame, {
-        name = "ParchmentReaderWidthSlider",
-        width = 400,
-    })
-    widthSlider:SetPoint("TOPLEFT", widthText, "BOTTOMLEFT", 0, -12)
-    widthSlider:SetMinMaxValues(minWidth, metrics.maxWidth)
-    widthSlider:SetValue(ParchmentReaderDB.windowWidth or metrics.defaultWidth)
-    widthSlider:SetValueStep(20)
-    widthSlider:SetObeyStepOnDrag(true)
-    widthSlider:SetRangeLabels(minWidth, metrics.maxWidth)
-    frame.widthSlider = widthSlider
-
-    widthSlider:HookScript("OnValueChanged", function(self, value)
-        value = math.floor(value)
-        self.valueText:SetText(value)
-        if frame.syncingSizeControls then return end
-        ParchmentReaderDB.windowWidth = value
-
-        if ParchmentReaderFrame then
-            ParchmentReaderFrame:SetWidth(value)
-            ParchmentReader:SaveReaderPosition()
-
-            ParchmentReader:UpdateContentWidth()
+    local function Text(parent, text, x, y, width, role, font)
+        local label = parent:CreateFontString(nil, "OVERLAY", font or "GameFontNormalSmall")
+        label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, -y)
+        label:SetWidth(width or 456)
+        label:SetJustifyH("LEFT")
+        label:SetJustifyV("TOP")
+        label:SetWordWrap(true)
+        label:SetText(text)
+        PRUI.SetFontStringColor(label, Theme:Get("text", role or "secondary"))
+        return label
+    end
+    local function Section(key, title, description, index)
+        local panel = CreateFrame("Frame", nil, frame)
+        panel:SetPoint("TOPLEFT", frame, "TOPLEFT", 166, -52)
+        panel:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -22, 58)
+        Text(panel, title, 0, 0, nil, "primary", "GameFontNormalLarge")
+        Text(panel, description, 0, 27, nil, "muted")
+        frame.sections[key] = panel
+        local button = PRUI.Button(navigation, title, {width = 124, height = 32, justifyH = "LEFT"})
+        button:SetPoint("TOPLEFT", navigation, "TOPLEFT", 10, -(16 + (index - 1) * 40))
+        button:SetScript("OnClick", function() frame:SelectSection(key) end)
+        frame.sectionButtons[key] = button
+        return panel
+    end
+    function frame:SelectSection(key)
+        if not self.sections[key] then return end
+        StopBindingCapture(self)
+        for _, input in ipairs(self.numericInputs) do input:ClearFocus() end
+        self.selectedSection = key
+        for sectionKey, panel in pairs(self.sections) do
+            panel:SetShown(sectionKey == key)
+            PRUI.SetButtonSelected(self.sectionButtons[sectionKey], sectionKey == key)
         end
-    end)
+    end
+    local reading = Section("reading", L["Reading"], L["Font and window size for comfortable reading."], 1)
+    local appearance = Section("appearance", L["Appearance"], L["Choose a theme and background behavior."], 2)
+    local controls = Section("controls", L["Controls"], L["Navigation and quick access to the reader."], 3)
+    local general = Section("general", L["General"], L["Interface language and maintenance."], 4)
 
-    yOffset = yOffset - spacing
 
 
-    local heightText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    heightText:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, yOffset)
-    heightText:SetText(L["Window height:"])
-    PRUI.SetFontStringColor(heightText, Theme:Get("text", "secondary"))
-
-    local heightSlider = PRUI.Slider(frame, {
-        name = "ParchmentReaderHeightSlider",
-        width = 400,
-    })
-    heightSlider:SetPoint("TOPLEFT", heightText, "BOTTOMLEFT", 0, -12)
-    heightSlider:SetMinMaxValues(minHeight, metrics.maxHeight)
-    heightSlider:SetValue(ParchmentReaderDB.windowHeight or metrics.defaultHeight)
-    heightSlider:SetValueStep(20)
-    heightSlider:SetObeyStepOnDrag(true)
-    heightSlider:SetRangeLabels(minHeight, metrics.maxHeight)
-    frame.heightSlider = heightSlider
-
-    heightSlider:HookScript("OnValueChanged", function(self, value)
-        value = math.floor(value)
-        self.valueText:SetText(value)
-        if frame.syncingSizeControls then return end
-        ParchmentReaderDB.windowHeight = value
-
-        if ParchmentReaderFrame then
-            ParchmentReaderFrame:SetHeight(value)
-            ParchmentReader:SaveReaderPosition()
-
+    local function NumberControl(parent, label, name, x, y, width, low, high, step, value, apply)
+        Text(parent, label, x, y + 7, width - 74)
+        local input, surface = PRUI.EditBox(parent, {name = name .. "Input", fontObject = "GameFontNormalSmall"})
+        surface:SetSize(66, 28)
+        surface:SetPoint("TOPLEFT", parent, "TOPLEFT", x + width - 66, -y)
+        input:SetNumeric(true)
+        input:SetMaxLetters(4)
+        input:SetJustifyH("RIGHT")
+        local slider = PRUI.Slider(parent, {name = name, width = width})
+        slider:SetPoint("TOPLEFT", parent, "TOPLEFT", x, -(y + 36))
+        slider:SetMinMaxValues(low, high)
+        slider:SetValueStep(step)
+        slider:SetObeyStepOnDrag(true)
+        slider:SetRangeLabels(low, high)
+        slider.valueText:Hide()
+        slider:SetValue(value)
+        input:SetText(tostring(math.floor(value)))
+        slider.numericInput = input
+        frame.numericInputs[#frame.numericInputs + 1] = input
+        slider:HookScript("OnValueChanged", function(_, current)
+            current = math.floor(current)
+            input:SetText(tostring(current))
+            if not frame.syncingSizeControls then apply(current) end
+        end)
+        local function Commit()
+            local minimum, maximum = slider:GetMinMaxValues()
+            local current = tonumber(input:GetText())
+            if current then
+                slider:SetValue(math.max(minimum, math.min(maximum, math.floor(current))))
+            end
+            input:SetText(tostring(math.floor(slider:GetValue())))
         end
-    end)
+        input:HookScript("OnEditFocusLost", Commit)
+        input:SetScript("OnEnterPressed", function() Commit(); input:ClearFocus() end)
+        input:SetScript("OnEscapePressed", function()
+            input:SetText(tostring(math.floor(slider:GetValue())))
+            input:ClearFocus()
+        end)
+        return slider
+    end
 
-    yOffset = yOffset - spacing - 4
-
-
-    local fontText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    fontText:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, yOffset)
-    fontText:SetText(L["Font:"])
-    PRUI.SetFontStringColor(fontText, Theme:Get("text", "secondary"))
-
-    local fontDropdown = PRUI.Dropdown(frame, {
-        name = "ParchmentReaderFontDropdown",
-        popoverName = "ParchmentReaderFontPopover",
-        width = 300,
-        value = ParchmentReaderDB.fontName or "ChatFontNormal",
+    Text(reading, L["Font:"], 0, 56)
+    local fontDropdown = PRUI.Dropdown(reading, {
+        name = "ParchmentReaderFontDropdown", popoverName = "ParchmentReaderFontPopover",
+        popoverShadow = false, popoverPadding = 8, rowBorder = false, justifyH = "LEFT",
+        width = 456, height = 28, value = ParchmentReaderDB.fontName or "ChatFontNormal",
         items = {
             {value = "ChatFontNormal", text = L["Chat Font (EN/DE/FR/RU/ES)"]},
             {value = "QuestFont", text = L["Quest Font (Latin sizing)"]},
@@ -379,56 +336,116 @@ function ParchmentReader:CreateSettingsFrame()
         onValueChanged = function(value)
             ParchmentReaderDB.fontName = value
             ParchmentReader:UpdateFont()
+            frame:RefreshFontSample()
         end,
     })
-    fontDropdown:SetPoint("TOPLEFT", fontText, "BOTTOMLEFT", 0, -5)
+    fontDropdown:SetPoint("TOPLEFT", reading, "TOPLEFT", 0, -72)
+    frame.fontDropdown = fontDropdown
+    local fontHint = Text(reading, "", 0, 108, nil, "muted")
+    local fontSizeSlider = NumberControl(reading, L["Font size:"], "ParchmentReaderFontSizeSlider",
+        0, 136, 456, 8, 24, 1, ParchmentReaderDB.fontSize or 14, function(value)
+            ParchmentReaderDB.fontSize = value
+            ParchmentReader:UpdateFont()
+            frame:RefreshFontSample()
+        end)
+    frame.fontSizeSlider = fontSizeSlider
+    local sampleSurface = PRUI.Panel(reading, {color = Theme:Get("bg", "surface")})
+    sampleSurface:SetSize(456, 92)
+    sampleSurface:SetPoint("TOPLEFT", reading, "TOPLEFT", 0, -212)
+    PRUI.ApplyPaperSurface(sampleSurface, false)
+    Text(sampleSurface, L["Text preview"], 12, 8, 432, "muted")
+    frame.fontSample = Text(sampleSurface, L["A quiet evening in Azeroth."], 12, 28, 432, "primary")
+    frame.fontSample:SetHeight(56)
+    frame.fontSample:SetMaxLines(2)
+    function frame:RefreshFontSample()
+        ParchmentReader:ApplyFontTo(self.fontSample)
+        PRUI.SetFontStringColor(self.fontSample, Theme:Get("text", "primary"))
+        fontHint:SetText(ParchmentReaderDB.fontName == "ChatFontNormal"
+            and L["Chat Font scales Latin and Cyrillic consistently."]
+            or L["Quest and Game fonts use fixed-size Cyrillic fallback; Morpheus supports Latin only."])
+    end
+    Text(reading, L["Reader window size"], 0, 316, nil, "primary")
+    local widthSlider = NumberControl(reading, L["Window width:"], "ParchmentReaderWidthSlider",
+        0, 332, 216, minWidth, metrics.maxWidth, 20, ParchmentReaderDB.windowWidth, function(value)
+            ParchmentReaderDB.windowWidth = value
+            if ParchmentReaderFrame then
+                ParchmentReaderFrame:SetWidth(value)
+                ParchmentReader:SaveReaderPosition()
+                ParchmentReader:UpdateContentWidth()
+            end
+        end)
+    local heightSlider = NumberControl(reading, L["Window height:"], "ParchmentReaderHeightSlider",
+        240, 332, 216, minHeight, metrics.maxHeight, 20, ParchmentReaderDB.windowHeight, function(value)
+            ParchmentReaderDB.windowHeight = value
+            if ParchmentReaderFrame then
+                ParchmentReaderFrame:SetHeight(value)
+                ParchmentReader:SaveReaderPosition()
+            end
+        end)
+    frame.widthSlider, frame.heightSlider = widthSlider, heightSlider
 
-    local fontHint = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    fontHint:SetPoint("TOPLEFT", fontDropdown, "BOTTOMLEFT", 0, -4)
-    fontHint:SetPoint("RIGHT", frame, "RIGHT", -20, 0)
-    fontHint:SetJustifyH("LEFT")
-    fontHint:SetText(L["Chat Font scales Latin and Cyrillic consistently."])
-    PRUI.SetFontStringColor(fontHint, Theme:Get("text", "muted"))
-
-    yOffset = yOffset - 72
 
 
-    local fontSizeText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    fontSizeText:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, yOffset)
-    fontSizeText:SetText(L["Font size:"])
-    PRUI.SetFontStringColor(fontSizeText, Theme:Get("text", "secondary"))
-
-    local fontSizeSlider = PRUI.Slider(frame, {
-        name = "ParchmentReaderFontSizeSlider",
-        width = 400,
-    })
-    fontSizeSlider:SetPoint("TOPLEFT", fontSizeText, "BOTTOMLEFT", 0, -12)
-    fontSizeSlider:SetMinMaxValues(8, 24)
-    fontSizeSlider:SetValue(ParchmentReaderDB.fontSize or 14)
-    fontSizeSlider:SetValueStep(1)
-    fontSizeSlider:SetObeyStepOnDrag(true)
-    fontSizeSlider:SetRangeLabels(8, 24)
-
-    fontSizeSlider:HookScript("OnValueChanged", function(self, value)
-        value = math.floor(value)
-        self.valueText:SetText(value)
-        ParchmentReaderDB.fontSize = value
-        ParchmentReader:UpdateFont()
-    end)
-
-    yOffset = yOffset - spacing
-
-
-    local transparencyText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    transparencyText:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, yOffset)
-    transparencyText:SetText(L["Reader transparency:"])
-    PRUI.SetFontStringColor(transparencyText, Theme:Get("text", "secondary"))
-
-    local transparencyDropdown = PRUI.Dropdown(frame, {
-        name = "ParchmentReaderTransparencyDropdown",
-        popoverName = "ParchmentReaderTransparencyPopover",
-        width = 340,
-        value = ParchmentReaderDB.transparencyMode or "off",
+    Text(appearance, L["Current theme"], 0, 56)
+    frame.themeCards, frame.themeSlotDropdowns = {}, {}
+    local themeItems = {}
+    for index, themeName in ipairs(Theme.order) do
+        themeItems[#themeItems + 1] = {value = themeName, text = L[Theme.names[themeName]]}
+        local card = PRUI.Button(appearance, L[Theme.names[themeName]], {width = 144, height = 76})
+        card:SetPoint("TOPLEFT", appearance, "TOPLEFT", (index - 1) * 156, -76)
+        card.label:ClearAllPoints()
+        card.label:SetPoint("BOTTOMLEFT", card.pruiContent, "BOTTOMLEFT", 4, 8)
+        card.label:SetPoint("BOTTOMRIGHT", card.pruiContent, "BOTTOMRIGHT", -4, 8)
+        card.label:SetWordWrap(true)
+        card.label:SetMaxLines(2)
+        local swatch = card.pruiContent:CreateTexture(nil, "ARTWORK")
+        swatch:SetPoint("TOPLEFT", card.pruiContent, "TOPLEFT", 9, -8)
+        swatch:SetSize(126, 28)
+        local palette = Theme.palettes[themeName]
+        swatch:SetColorTexture(unpack(palette.bg.surface))
+        local preview = card.pruiContent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        preview:SetPoint("CENTER", swatch, "CENTER", 0, 0)
+        preview:SetText("Aa")
+        preview:SetTextColor(unpack(palette.text.primary))
+        card:SetScript("OnClick", function() ParchmentReader:SetTheme(themeName) end)
+        PRUI.AttachTooltip(card, L[Theme.names[themeName]])
+        frame.themeCards[themeName] = card
+    end
+    for index, slot in ipairs({"sun", "moon"}) do
+        local x = (index - 1) * 240
+        local label = Text(appearance, L[slot == "sun" and "Sun button" or "Moon button"], x + 20, 168, 196)
+        local icon = appearance:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(16, 16)
+        icon:SetPoint("RIGHT", label, "LEFT", -4, 0)
+        icon:SetTexture("Interface\\AddOns\\ParchmentReader\\Assets\\" .. (slot == "sun" and "ThemeSun" or "ThemeMoon"))
+        Theme:BindIconColor(icon, Theme:Get("text", "secondary"))
+        local dropdown = PRUI.Dropdown(appearance, {
+            name = "ParchmentReader" .. slot .. "ThemeDropdown",
+            popoverName = "ParchmentReader" .. slot .. "ThemePopover",
+            width = 216, height = 28,
+            popoverShadow = false, popoverPadding = 8, rowBorder = false, justifyH = "LEFT",
+            items = themeItems, value = ParchmentReaderDB[slot .. "Theme"],
+            onValueChanged = function(value) ParchmentReader:SetThemeSlot(slot, value) end,
+        })
+        dropdown:SetPoint("TOPLEFT", appearance, "TOPLEFT", x, -184)
+        PRUI.AttachTooltip(dropdown, function(button) return button:GetFontString():GetText() end)
+        frame.themeSlotDropdowns[slot] = dropdown
+    end
+    function frame:RefreshThemeControls()
+        for themeName, card in pairs(self.themeCards) do
+            PRUI.SetButtonSelected(card, themeName == Theme:NormalizeName(ParchmentReaderDB.themeName))
+        end
+        local moon, sun = Theme:NormalizeSlots(ParchmentReaderDB)
+        self.themeSlotDropdowns.moon:SetValue(moon, true)
+        self.themeSlotDropdowns.sun:SetValue(sun, true)
+    end
+    Text(appearance, L["Quick theme switching in the reader."], 0, 220, nil, "muted")
+    Text(appearance, L["Reader transparency:"], 0, 260)
+    local transparencyHint
+    local transparencyDropdown = PRUI.Dropdown(appearance, {
+        name = "ParchmentReaderTransparencyDropdown", popoverName = "ParchmentReaderTransparencyPopover",
+        popoverShadow = false, popoverPadding = 8, rowBorder = false, justifyH = "LEFT",
+        width = 456, height = 28, value = ParchmentReaderDB.transparencyMode or "off",
         items = {
             {value = "off", text = L["Off — standard background"]},
             {value = "always", text = L["Always — transparent background"]},
@@ -436,154 +453,114 @@ function ParchmentReader:CreateSettingsFrame()
         },
         onValueChanged = function(value)
             ParchmentReader:SetReaderTransparencyMode(value)
+            frame:RefreshTransparencyHint()
         end,
     })
-    transparencyDropdown:SetPoint("TOPLEFT", transparencyText, "BOTTOMLEFT", 0, -5)
-
-    local transparencyHint = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    transparencyHint:SetPoint("TOPLEFT", transparencyDropdown, "BOTTOMLEFT", 0, -4)
-    transparencyHint:SetPoint("RIGHT", frame, "RIGHT", -20, 0)
-    transparencyHint:SetJustifyH("LEFT")
-    transparencyHint:SetText(
-        L["Smart restores the glass background while you interact with the reader."])
-    PRUI.SetFontStringColor(transparencyHint, Theme:Get("text", "muted"))
-
-    yOffset = yOffset - 82
-
-    local combatTransparencyCheck = PRUI.Checkbox(
-        frame, L["Transparent background in combat"], {
-            name = "ParchmentReaderCombatTransparencyCheck",
-            width = 400,
-        })
-    combatTransparencyCheck:SetPoint(
-        "TOPLEFT", frame, "TOPLEFT", 20, yOffset)
-    combatTransparencyCheck:SetChecked(
-        ParchmentReaderDB.readerCombatTransparency == true)
+    transparencyDropdown:SetPoint("TOPLEFT", appearance, "TOPLEFT", 0, -276)
+    frame.transparencyDropdown = transparencyDropdown
+    transparencyHint = Text(appearance, "", 0, 312, nil, "muted")
+    function frame:RefreshTransparencyHint()
+        local mode = ParchmentReaderDB.transparencyMode
+        local key = mode == "smart" and "The selected theme becomes opaque while you interact with the reader."
+            or mode == "always" and "The reader keeps its transparent background while you interact."
+            or "Standard background of the selected theme."
+        transparencyHint:SetText(L[key])
+    end
+    local combatTransparencyCheck = PRUI.Checkbox(appearance, L["Transparent background in combat"], {
+        name = "ParchmentReaderCombatTransparencyCheck", width = 456})
+    combatTransparencyCheck:SetPoint("TOPLEFT", appearance, "TOPLEFT", 0, -352)
+    combatTransparencyCheck:SetChecked(ParchmentReaderDB.readerCombatTransparency == true)
     PRUI.RefreshCheckbox(combatTransparencyCheck)
-    PRUI.AttachTooltip(
-        combatTransparencyCheck,
-        L["Combat forces transparency; leaving combat restores the selected mode."])
+    PRUI.AttachTooltip(combatTransparencyCheck, L["Combat forces transparency; leaving combat restores the selected mode."])
     combatTransparencyCheck:HookScript("OnClick", function(self)
-        ParchmentReader:SetReaderCombatTransparencyEnabled(
-            PRUI.IsCheckboxChecked(self))
+        ParchmentReader:SetReaderCombatTransparencyEnabled(PRUI.IsCheckboxChecked(self))
     end)
 
-    yOffset = yOffset - 32
+    local keyboardNavigationCheck = PRUI.Checkbox(controls, L["Keyboard navigation"], {
+        name = "ParchmentReaderKeyboardNavigationCheck", width = 456})
+    keyboardNavigationCheck:SetPoint("TOPLEFT", controls, "TOPLEFT", 0, -56)
+    keyboardNavigationCheck:SetChecked(ParchmentReaderDB.readerKeyboardNavigation ~= false)
+    PRUI.RefreshCheckbox(keyboardNavigationCheck)
+    keyboardNavigationCheck:HookScript("OnClick", function(self)
+        ParchmentReader:SetReaderKeyboardNavigationEnabled(PRUI.IsCheckboxChecked(self))
+    end)
+    frame.keyboardNavigationCheck = keyboardNavigationCheck
+    Text(controls, L["Activate: click the page.\nExit: click elsewhere or press Esc."], 0, 86, nil, "muted")
+    Text(controls, L["Shortcuts:"], 0, 134, nil, "primary")
+    frame.bindingControls = {}
+    local function CreateBindingRow(action, label, y)
+        local row = CreateFrame("Frame", nil, controls)
+        row:SetSize(456, 34)
+        row:SetPoint("TOPLEFT", controls, "TOPLEFT", 0, -y)
+        local rowLabel = Text(row, label, 0, 9, 232)
+        local setKeyButton = PRUI.Button(row, "", {width = 180, height = 32})
+        setKeyButton:SetPoint("TOPRIGHT", row, "TOPRIGHT", -36, 0)
+        setKeyButton:SetScript("OnClick", function()
+            for _, input in ipairs(frame.numericInputs) do input:ClearFocus() end
+            StartBindingCapture(frame, action)
+        end)
+        PRUI.AttachTooltip(setKeyButton, function() return setKeyButton:GetFontString():GetText() end)
+        local clearKeyButton = PRUI.IconButton(row, nil, L["Clear"], {
+            width = 28, height = 28, iconText = "×", fontObject = "GameFontNormal",
+        })
+        clearKeyButton:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, -2)
+        clearKeyButton:SetScript("OnClick", function()
+            StopBindingCapture(frame)
+            ParchmentReader:ClearAddonBinding(action)
+        end)
+        frame.bindingControls[action] = {
+            bindingValue = setKeyButton:GetFontString(), setKeyButton = setKeyButton,
+            clearKeyButton = clearKeyButton, label = rowLabel,
+        }
+    end
+    CreateBindingRow(READER_BINDING, L["Show / Hide Reader"], 156)
+    CreateBindingRow(COMPACT_BINDING, L["Toggle Compact Mode"], 192)
+    CreateBindingRow(MINIMIZE_BINDING, L["Minimize / Restore Reader"], 228)
+    CreateBindingRow(QUICK_NOTE_BINDING, L["Open Quick Note"], 264)
+    CreateBindingRow(RESUME_QUICK_NOTE_BINDING, L["Resume Last Quick Note"], 300)
+    Text(controls, L["Click a shortcut field, then press a key. Esc cancels."], 0, 340, nil, "muted")
+    Text(controls, L["Also available in WoW Key Bindings; disabled in combat."], 0, 370, nil, "muted")
 
-
-    local minimapCheck = PRUI.Checkbox(frame, L["Show minimap button"], {
-        name = "ParchmentReaderMinimapCheck",
-        width = 208,
+    Text(general, L["Interface language:"], 0, 56)
+    StaticPopupDialogs["PARCHMENTREADER_RELOAD_LANGUAGE"] = {
+        text = L["Language choice saved.\n\nReload the interface now?"], button1 = L["Reload UI"], button2 = L["Later"],
+        OnAccept = ReloadUI, timeout = 0, whileDead = true, hideOnEscape = true,
+    }
+    local languageDropdown = PRUI.Dropdown(general, {
+        name = "ParchmentReaderLanguageDropdown", popoverName = "ParchmentReaderLanguagePopover",
+        popoverShadow = false, popoverPadding = 8, rowBorder = false, justifyH = "LEFT",
+        width = 456, height = 28, value = ParchmentReaderDB.interfaceLanguage or "auto",
+        items = {
+            {value = "auto", text = L["Auto — WoW client language"]},
+            {value = "enUS", text = L["English"]}, {value = "deDE", text = L["Deutsch"]},
+            {value = "frFR", text = L["Français"]}, {value = "esES", text = L["Español"]},
+            {value = "ptBR", text = L["Português (Brasil)"]}, {value = "ruRU", text = L["Русский"]},
+        },
+        onValueChanged = function(value)
+            value = ParchmentReader:NormalizeInterfaceLanguage(value)
+            if ParchmentReaderDB.interfaceLanguage == value then return end
+            ParchmentReaderDB.interfaceLanguage = value
+            StaticPopup_Show("PARCHMENTREADER_RELOAD_LANGUAGE")
+        end,
     })
-    minimapCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, yOffset)
+    languageDropdown:SetPoint("TOPLEFT", general, "TOPLEFT", 0, -72)
+    frame.languageDropdown = languageDropdown
+    Text(general, L["Applied after reload."], 0, 108, nil, "muted")
+    local minimapCheck = PRUI.Checkbox(general, L["Show minimap button"], {name = "ParchmentReaderMinimapCheck", width = 456})
+    minimapCheck:SetPoint("TOPLEFT", general, "TOPLEFT", 0, -144)
     minimapCheck:SetChecked(not ParchmentReaderDB.hide)
     PRUI.RefreshCheckbox(minimapCheck)
-
     minimapCheck:HookScript("OnClick", function(self)
         local checked = PRUI.IsCheckboxChecked(self)
         ParchmentReaderDB.hide = not checked
-
-        if ParchmentReader.minimapBtn then
-            if checked then
-                ParchmentReader.minimapBtn:Show()
-            else
-                ParchmentReader.minimapBtn:Hide()
-            end
-        end
+        if ParchmentReader.minimapBtn then ParchmentReader.minimapBtn:SetShown(checked) end
     end)
-
-    local keyboardNavigationCheck = PRUI.Checkbox(
-        frame, L["Keyboard navigation"], {
-            name = "ParchmentReaderKeyboardNavigationCheck",
-            width = 184,
-        })
-    keyboardNavigationCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 236, yOffset)
-    keyboardNavigationCheck:SetChecked(
-        ParchmentReaderDB.readerKeyboardNavigation ~= false)
-    PRUI.RefreshCheckbox(keyboardNavigationCheck)
-    PRUI.AttachTooltip(
-        keyboardNavigationCheck,
-        L["Activate: click the page.\nExit: click elsewhere or press Esc."])
-    keyboardNavigationCheck:HookScript("OnClick", function(self)
-        ParchmentReader:SetReaderKeyboardNavigationEnabled(
-            PRUI.IsCheckboxChecked(self))
-    end)
-    frame.keyboardNavigationCheck = keyboardNavigationCheck
-
-    local shortcutsText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    shortcutsText:SetPoint("TOPLEFT", minimapCheck, "BOTTOMLEFT", 0, -18)
-    shortcutsText:SetText(L["Shortcuts:"])
-    PRUI.SetFontStringColor(shortcutsText, Theme:Get("text", "secondary"))
-
-    frame.bindingControls = {}
-
-    local function CreateBindingRow(action, label, anchor, yOffset)
-        local row = CreateFrame("Frame", nil, frame)
-        row:SetSize(400, 26)
-        row:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, yOffset)
-
-        local rowLabel = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        rowLabel:SetPoint("LEFT", row, "LEFT", 0, 0)
-        rowLabel:SetWidth(88)
-        rowLabel:SetJustifyH("LEFT")
-        rowLabel:SetText(label)
-        PRUI.SetFontStringColor(rowLabel, Theme:Get("text", "secondary"))
-
-        local bindingSurface = PRUI.Panel(row, {color = Theme:Get("bg", "control")})
-        bindingSurface:SetPoint("LEFT", rowLabel, "RIGHT", 6, 0)
-        bindingSurface:SetSize(124, 26)
-        bindingSurface:EnableMouse(true)
-
-        local bindingValue = bindingSurface:CreateFontString(
-            nil, "OVERLAY", "GameFontNormalSmall")
-        bindingValue:SetPoint("LEFT", bindingSurface, "LEFT", 8, 0)
-        bindingValue:SetPoint("RIGHT", bindingSurface, "RIGHT", -8, 0)
-        bindingValue:SetJustifyH("LEFT")
-        bindingValue:SetWordWrap(false)
-        PRUI.SetFontStringColor(bindingValue, Theme:Get("text", "primary"))
-        PRUI.AttachTooltip(bindingSurface, function()
-            return bindingValue:GetText()
-        end)
-
-        local setKeyButton = PRUI.Button(
-            row, L["Set Key"], {width = 92, height = 26})
-        setKeyButton:SetPoint("LEFT", bindingSurface, "RIGHT", 8, 0)
-        setKeyButton:SetScript("OnClick", function()
-            StartBindingCapture(frame, action)
-        end)
-
-        local clearKeyButton = PRUI.Button(
-            row, L["Clear"], {width = 68, height = 26})
-        clearKeyButton:SetPoint("LEFT", setKeyButton, "RIGHT", 8, 0)
-        clearKeyButton:SetScript("OnClick", function()
-            ParchmentReader:ClearAddonBinding(action)
-        end)
-
-        frame.bindingControls[action] = {
-            bindingValue = bindingValue,
-            clearKeyButton = clearKeyButton,
-            setKeyButton = setKeyButton,
-        }
-        return row
-    end
-
-    local readerBindingRow = CreateBindingRow(
-        READER_BINDING, L["Reader:"], shortcutsText, -5)
-    local compactBindingRow = CreateBindingRow(
-        COMPACT_BINDING, L["Compact:"], readerBindingRow, -4)
-    local minimizeBindingRow = CreateBindingRow(
-        MINIMIZE_BINDING, L["Minimize:"], compactBindingRow, -4)
-    local quickNoteBindingRow = CreateBindingRow(
-        QUICK_NOTE_BINDING, L["Quick Note:"], minimizeBindingRow, -4)
-
-    local bindingHint = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    bindingHint:SetPoint("TOPLEFT", quickNoteBindingRow, "BOTTOMLEFT", 0, -5)
-    bindingHint:SetPoint("RIGHT", frame, "RIGHT", -20, 0)
-    bindingHint:SetJustifyH("LEFT")
-    bindingHint:SetText(
-        L["Also available in WoW Key Bindings; disabled in combat."])
-    PRUI.SetFontStringColor(bindingHint, Theme:Get("text", "muted"))
-
+    local debugBtn = PRUI.Button(general, L["Debug Info"], {width = 184, height = 30})
+    debugBtn:SetPoint("TOPLEFT", general, "TOPLEFT", 0, -184)
+    debugBtn:SetScript("OnClick", function() ParchmentReader:ShowDebugInfo() end)
+    Text(general, L["Maintenance"], 0, 238, nil, "primary")
+    Text(general, L["Reading history"], 0, 266, 264)
+    Text(general, L["Recently opened books. Your books and favorites are kept."], 0, 286, 264, "muted")
     StaticPopupDialogs["PARCHMENTREADER_REPLACE_BINDING"] = {
         text = L["%s is already assigned to %s. Replace it?"],
         button1 = L["Replace"],
@@ -625,8 +602,11 @@ function ParchmentReader:CreateSettingsFrame()
     end)
 
     frame:RegisterEvent("PLAYER_REGEN_DISABLED")
+    frame:RegisterEvent("UPDATE_BINDINGS")
     frame:SetScript("OnEvent", function(settingsFrame, event)
-        if event == "PLAYER_REGEN_DISABLED" and settingsFrame.capturingBindingAction then
+        if event == "UPDATE_BINDINGS" then
+            ParchmentReader:RefreshAddonBindingControls()
+        elseif event == "PLAYER_REGEN_DISABLED" and settingsFrame.capturingBindingAction then
             StopBindingCapture(settingsFrame)
             ParchmentReader:PrintMessage(
                 "Key capture cancelled because combat started.")
@@ -635,8 +615,13 @@ function ParchmentReader:CreateSettingsFrame()
     frame:HookScript("OnShow", function(settingsFrame)
         StopBindingCapture(settingsFrame)
         ParchmentReader:RefreshAddonBindingControls()
+        ParchmentReader:SyncWindowSizeControls()
+        settingsFrame:RefreshThemeControls()
+        settingsFrame:RefreshFontSample()
+        settingsFrame:RefreshTransparencyHint()
     end)
     frame:HookScript("OnHide", function(settingsFrame)
+        for _, input in ipairs(settingsFrame.numericInputs) do input:ClearFocus() end
         StopBindingCapture(settingsFrame)
     end)
     StopBindingCapture(frame)
@@ -647,6 +632,11 @@ function ParchmentReader:CreateSettingsFrame()
         button1 = L["Reset to Defaults"],
         button2 = L["Cancel"],
         OnAccept = function()
+            if InCombatLockdown() then
+                ParchmentReader:PrintMessage("Settings cannot be reset in combat.")
+                return
+            end
+
 
             local resetFromCompact = ParchmentReaderDB.sidebarCollapsed == true
             ParchmentReaderDB.windowWidth = metrics.defaultWidth
@@ -668,6 +658,7 @@ function ParchmentReader:CreateSettingsFrame()
             local reloadForLanguage = ParchmentReader.locale
                 ~= ParchmentReader:ResolveInterfaceLocale("auto")
             ParchmentReaderDB.interfaceLanguage = "auto"
+            ParchmentReader:ResetThemes()
             ParchmentReader:HideFloatingLauncher()
             ParchmentReader:ResetFloatingLauncherSettings()
             ParchmentReader:RefreshReaderPinState()
@@ -676,6 +667,7 @@ function ParchmentReader:CreateSettingsFrame()
             ParchmentReader:ClearAddonBinding(COMPACT_BINDING, true)
             ParchmentReader:ClearAddonBinding(MINIMIZE_BINDING, true)
             ParchmentReader:ClearAddonBinding(QUICK_NOTE_BINDING, true)
+            ParchmentReader:ClearAddonBinding(RESUME_QUICK_NOTE_BINDING, true)
 
 
             widthSlider:SetValue(metrics.defaultWidth)
@@ -690,6 +682,9 @@ function ParchmentReader:CreateSettingsFrame()
             keyboardNavigationCheck:SetChecked(true)
             PRUI.RefreshCheckbox(keyboardNavigationCheck)
             languageDropdown:SetValue("auto", true)
+            frame:RefreshThemeControls()
+            frame:RefreshFontSample()
+            frame:RefreshTransparencyHint()
 
 
             if ParchmentReaderFrame then
@@ -732,21 +727,24 @@ function ParchmentReader:CreateSettingsFrame()
         hideOnEscape = true,
     }
 
-
-    local resetButton = PRUI.Button(
-        frame, L["Reset to Defaults"], {width = 176, height = 26})
-    resetButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 20, 16)
-    resetButton:SetScript("OnClick", function()
-        StaticPopup_Show("PARCHMENTREADER_RESET")
+    local clearHistoryButton = PRUI.Button(general, L["Clear History"], {width = 176, height = 30})
+    clearHistoryButton:SetPoint("TOPRIGHT", general, "TOPRIGHT", 0, -266)
+    clearHistoryButton:SetScript("OnClick", function()
+        ParchmentReader:ConfirmClearReadingHistory()
     end)
-
-
-    local closeButton = PRUI.Button(frame, L["Close"], {width = 104, height = 26})
-    closeButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 16)
-    closeButton:SetScript("OnClick", function()
-        frame:Hide()
-    end)
-
+    Text(general, L["Default settings"], 0, 340, 264)
+    Text(general, L["Appearance, controls, and window positions."], 0, 360, 264, "muted")
+    local resetButton = PRUI.Button(general, L["Reset to Defaults"], {width = 176, height = 30})
+    resetButton:SetPoint("TOPRIGHT", general, "TOPRIGHT", 0, -340)
+    resetButton:SetScript("OnClick", function() StaticPopup_Show("PARCHMENTREADER_RESET") end)
+    Text(footer, L["Changes are saved immediately."], 16, 15, 456, "muted")
+    local closeButton = PRUI.Button(footer, L["Close"], {width = 104, height = 28})
+    closeButton:SetPoint("RIGHT", footer, "RIGHT", -12, 0)
+    closeButton:SetScript("OnClick", function() frame:Hide() end)
+    frame:RefreshThemeControls()
+    frame:RefreshFontSample()
+    frame:RefreshTransparencyHint()
+    frame:SelectSection("reading")
     frame:Hide()
     return frame
 end
