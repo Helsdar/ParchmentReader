@@ -47,6 +47,7 @@ local function CaptureEditorBaseline(frame)
         content = frame.contentInput:GetText() or "",
         collection = frame.selectedCollection,
     }
+    frame.savedBookBaseline = ParchmentReader:CaptureSavedBookBaseline(frame.editingBook)
     frame.isDirty = false
     RefreshCharacterCount(frame)
 end
@@ -56,19 +57,32 @@ local function ClearPendingEditorAction(frame)
     frame.pendingBookKey = nil
 end
 
+local function InvalidateEditorConfirmations(frame)
+    local discardPopup, deletePopup = frame.discardPopup, frame.deletePopup
+
+    frame.draftGeneration = (frame.draftGeneration or 0) + 1
+    frame.discardPopup, frame.deletePopup = nil, nil
+    frame.pendingDiscardData, frame.pendingDeleteData = nil, nil
+    ClearPendingEditorAction(frame)
+    if discardPopup then discardPopup:Hide() end
+    if deletePopup then deletePopup:Hide() end
+end
+
 local function ShowDiscardConfirmation(frame, action, bookKey)
     frame.pendingEditorAction = action or "close"
     frame.pendingBookKey = bookKey
     if frame.discardPopup and frame.discardPopup:IsShown() then return end
 
+    frame.pendingDiscardData = {editorFrame = frame, generation = frame.draftGeneration}
     frame.discardPopup = StaticPopup_Show(
-        "PARCHMENTREADER_DISCARD_CHANGES", nil, nil, frame)
+        "PARCHMENTREADER_DISCARD_CHANGES", nil, nil, frame.pendingDiscardData)
 end
 
 local function RequestEditorClose(frame)
     if frame.isDirty then
         ShowDiscardConfirmation(frame)
     else
+        InvalidateEditorConfirmations(frame)
         frame:Hide()
     end
 end
@@ -120,6 +134,14 @@ local function ResetContentInputState(frame)
 end
 
 
+local function BuildCollectionPickerItems()
+    local items = {{text = L["No Collection"], pinned = true}}
+    for _, name in ipairs(ParchmentReaderDB.collections or {}) do
+        items[#items + 1] = {text = name, value = name}
+    end
+    return items
+end
+
 function ParchmentReader:CreateBookEditorFrame()
     local Theme = self.Theme
     local PRUI = self.PRUI
@@ -128,6 +150,7 @@ function ParchmentReader:CreateBookEditorFrame()
         title = L["Add Book"],
     })
     frame:SetSize(540, 500)
+    frame.draftGeneration = 0
     frame:SetPoint("CENTER")
     frame:EnableMouse(true)
     PRUI.SetAddonFrameLayer(frame, PRUI.ADDON_FRAME_LEVELS.WINDOW)
@@ -138,11 +161,13 @@ function ParchmentReader:CreateBookEditorFrame()
         text = L["Discard unsaved changes?"],
         button1 = L["Discard Changes"],
         button2 = L["Keep Editing"],
-        OnAccept = function(_, editorFrame)
+        OnAccept = function(_, data)
+            local editorFrame = data.editorFrame
+            if editorFrame.draftGeneration ~= data.generation
+                or editorFrame.pendingDiscardData ~= data then return end
             local action = editorFrame.pendingEditorAction or "close"
             local pendingBookKey = editorFrame.pendingBookKey
-            editorFrame.discardPopup = nil
-            ClearPendingEditorAction(editorFrame)
+            InvalidateEditorConfirmations(editorFrame)
             editorFrame.isDirty = false
             if action == "open" then
                 ParchmentReader:ShowBookEditor(pendingBookKey)
@@ -150,8 +175,12 @@ function ParchmentReader:CreateBookEditorFrame()
                 editorFrame:Hide()
             end
         end,
-        OnCancel = function(_, editorFrame)
+        OnCancel = function(_, data)
+            local editorFrame = data.editorFrame
+            if editorFrame.draftGeneration ~= data.generation
+                or editorFrame.pendingDiscardData ~= data then return end
             editorFrame.discardPopup = nil
+            editorFrame.pendingDiscardData = nil
             ClearPendingEditorAction(editorFrame)
             editorFrame:Show()
         end,
@@ -167,6 +196,9 @@ function ParchmentReader:CreateBookEditorFrame()
         OnAccept = function(_, data)
             local bookKey = data.bookKey
             local editorFrame = data.editorFrame
+            if editorFrame.draftGeneration ~= data.generation
+                or editorFrame.pendingDeleteData ~= data then return end
+            InvalidateEditorConfirmations(editorFrame)
 
 
             if ParchmentReaderDB.customBooks then
@@ -176,9 +208,16 @@ function ParchmentReader:CreateBookEditorFrame()
                 ParchmentReaderDB.bookPages[bookKey] = nil
             end
             ParchmentReader:DeleteReadingPosition(bookKey)
+            ParchmentReader:DeleteLibraryViewBook(bookKey)
 
 
             ParchmentReader.books[bookKey] = nil
+            if ParchmentReaderDB.lastQuickNote == bookKey then
+                ParchmentReaderDB.lastQuickNote = nil
+            end
+            if ParchmentReader.RefreshQuickNoteResumeRow then
+                ParchmentReader:RefreshQuickNoteResumeRow()
+            end
             if ParchmentReaderDB.selectedBook == bookKey then
                 ParchmentReaderDB.selectedBook = nil
             end
@@ -202,6 +241,13 @@ function ParchmentReader:CreateBookEditorFrame()
 
             editorFrame.isDirty = false
             editorFrame:Hide()
+        end,
+        OnCancel = function(_, data)
+            local editorFrame = data.editorFrame
+            if editorFrame.draftGeneration ~= data.generation
+                or editorFrame.pendingDeleteData ~= data then return end
+            editorFrame.pendingDeleteData = nil
+            editorFrame.deletePopup = nil
         end,
         timeout = 0,
         whileDead = true,
@@ -255,32 +301,18 @@ function ParchmentReader:CreateBookEditorFrame()
     PRUI.SetFontStringColor(collLabel, Theme:Get("text", "secondary"))
     frame.collLabel = collLabel
 
-
-    local collClip = PRUI.Panel(frame, {color = Theme:Get("bg", "control")})
-    collClip:SetPoint("LEFT", collLabel, "RIGHT", 8, 0)
-    collClip:SetPoint("RIGHT", frame, "RIGHT", -16, 0)
-    collClip:SetHeight(24)
-    collClip:SetClipsChildren(true)
-    collClip:EnableMouseWheel(true)
-    collClip.scrollOffset = 0
-    frame.collClip = collClip
-
-    local collInner = CreateFrame("Frame", nil, collClip)
-    collInner:SetPoint("LEFT", collClip, "LEFT", 0, 0)
-    collInner:SetHeight(22)
-    collInner.contentWidth = 0
-    collClip.inner = collInner
-
-    collClip:SetScript("OnMouseWheel", function(_, delta)
-        collClip.scrollOffset = collClip.scrollOffset - delta * 30
-        local maxOff = math.max(0, collInner.contentWidth - collClip:GetWidth())
-        collClip.scrollOffset = math.max(0, math.min(collClip.scrollOffset, maxOff))
-        collInner:ClearAllPoints()
-        collInner:SetPoint("LEFT", collClip, "LEFT", -collClip.scrollOffset, 0)
-    end)
-
-
-    frame.collBtns = {}
+    local collectionPicker = PRUI.Dropdown(frame, {
+        popoverName = "ParchmentReaderEditorCollectionPopover",
+        items = BuildCollectionPickerItems(), getItems = BuildCollectionPickerItems,
+        searchable = true, searchThreshold = 8, maxRows = 8,
+        onValueChanged = function(value)
+            frame.selectedCollection = value
+            RefreshEditorDirtyState(frame)
+        end,
+    })
+    collectionPicker:SetPoint("LEFT", collLabel, "RIGHT", 8, 0)
+    collectionPicker:SetPoint("RIGHT", frame, "RIGHT", -16, 0)
+    frame.collectionPicker = collectionPicker
     frame.selectedCollection = nil
 
 
@@ -300,6 +332,7 @@ function ParchmentReader:CreateBookEditorFrame()
     local contentSurface = PRUI.Panel(frame, {color = Theme:Get("bg", "surface")})
     contentSurface:SetPoint("TOPLEFT", contentLabel, "BOTTOMLEFT", 0, -6)
     contentSurface:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -16, 56)
+    PRUI.ApplyPaperSurface(contentSurface)
     frame.contentSurface = contentSurface
 
     local scrollFrame = CreateFrame(
@@ -324,8 +357,7 @@ function ParchmentReader:CreateBookEditorFrame()
     end
     editBox:SetAltArrowKeyMode(false)
     local selectionColor = Theme:Get("accent", "gold")
-    editBox:SetHighlightColor(
-        selectionColor[1], selectionColor[2], selectionColor[3], 0.38)
+    Theme:BindColor(editBox, "SetHighlightColor", selectionColor, 0.38)
     editBox.pruiContainer = contentSurface
 
     editBox:SetScript("OnEscapePressed", function(input)
@@ -342,6 +374,7 @@ function ParchmentReader:CreateBookEditorFrame()
         end
     end)
     editBox:SetScript("OnCursorChanged", function(_, _x, y, _cursorWidth, height)
+        if editBox.pruiRefreshingThemeInk then return end
         local cursorTop = -(y or 0)
         local cursorBottom = cursorTop + (height or 0)
         local scrollOffset = scrollFrame:GetVerticalScroll() or 0
@@ -436,89 +469,35 @@ function ParchmentReader:CreateBookEditorFrame()
     return frame
 end
 
-local function ClampCollScroll(clip)
-    local inner = clip.inner
-    if not inner then return end
-    local maxOff = math.max(0, inner.contentWidth - clip:GetWidth())
-    clip.scrollOffset = math.max(0, math.min(clip.scrollOffset, maxOff))
-    inner:ClearAllPoints()
-    inner:SetPoint("LEFT", clip, "LEFT", -clip.scrollOffset, 0)
+local function RefreshCollectionPicker(frame, activeCollection)
+    local items = BuildCollectionPickerItems()
+    frame.selectedCollection = activeCollection
+    frame.collectionPicker.popover:Hide()
+    frame.collectionPicker:SetItems(items)
+    frame.collectionPicker:SetValue(activeCollection, true)
 end
 
-local function RebuildCollectionButtons(frame, activeCollection)
+function ParchmentReader:RefreshEditorCollections()
+    local frame = ParchmentReaderEditorFrame
+    if not frame or not frame.collectionPicker then return end
+    local items = BuildCollectionPickerItems()
 
-    for _, btn in ipairs(frame.collBtns) do
-        btn:Hide()
-    end
-
-    local clip = frame.collClip
-    local inner = clip.inner
-    clip.scrollOffset = 0
-
-    local items = {{label = L["No Collection"]}}
-    for _, collectionName in ipairs(ParchmentReaderDB.collections or {}) do
-        items[#items + 1] = {
-            label = collectionName,
-            collection = collectionName,
-        }
-    end
-
-    frame.selectedCollection = activeCollection
-
-    local xOffset = 0
-    for index, item in ipairs(items) do
-        local btn = frame.collBtns[index]
-        if not btn then
-            btn = ParchmentReader.PRUI.Button(inner, "", {height = 22})
-            btn:RegisterForDrag("LeftButton")
-
-            btn:SetScript("OnClick", function(button)
-                frame.selectedCollection = button.collectionName
-                RebuildCollectionButtons(frame, button.collectionName)
-                RefreshEditorDirtyState(frame)
-            end)
-
-            btn:SetScript("OnDragStart", function()
-                local startX = select(1, GetCursorPosition()) / UIParent:GetEffectiveScale()
-                local startOffset = clip.scrollOffset
-                clip:SetScript("OnUpdate", function()
-                    local curX = select(1, GetCursorPosition()) / UIParent:GetEffectiveScale()
-                    clip.scrollOffset = startOffset - (curX - startX)
-                    ClampCollScroll(clip)
-                end)
-            end)
-            btn:SetScript("OnDragStop", function()
-                clip:SetScript("OnUpdate", nil)
-            end)
-
-            frame.collBtns[index] = btn
-        end
-
-        btn.collectionName = item.collection
-        btn:SetText(item.label)
-        local label = btn:GetFontString()
-        local buttonWidth = label and math.ceil(label:GetStringWidth()) + 16 or 70
-        btn:SetSize(math.max(70, buttonWidth), 22)
-        btn:ClearAllPoints()
-        btn:SetPoint("LEFT", inner, "LEFT", xOffset, 0)
-        btn:Enable()
-        ParchmentReader.PRUI.SetButtonSelected(
-            btn, item.collection == activeCollection)
-
-        if item.collection == activeCollection then
-            btn:Disable()
-        end
-
-        btn:Show()
-        xOffset = xOffset + btn:GetWidth() + 4
-    end
-
-    inner.contentWidth = xOffset
-    inner:SetWidth(math.max(xOffset, 1))
-    ClampCollScroll(clip)
+    frame.collectionPicker:SetItems(items)
+    frame.collectionPicker:SetValue(frame.selectedCollection, true)
+    RefreshEditorDirtyState(frame)
 end
 
 function ParchmentReader:ShowBookEditor(bookKey)
+    local quick = ParchmentReaderQuickNoteFrame
+    if bookKey and quick and quick:IsShown() and quick.editingBook == bookKey then
+        self:ShowQuickNote()
+        return
+    end
+    local existing = ParchmentReaderEditorFrame
+    if bookKey and existing and existing:IsShown() and existing.editingBook == bookKey then
+        existing:Raise()
+        return
+    end
     if bookKey then
         local book = self.books[bookKey]
         if not book then
@@ -537,6 +516,8 @@ function ParchmentReader:ShowBookEditor(bookKey)
         return
     end
 
+    InvalidateEditorConfirmations(frame)
+    frame.quickNoteSave = nil
     frame.editingBook = bookKey
     frame.syncingEditor = true
 
@@ -546,14 +527,14 @@ function ParchmentReader:ShowBookEditor(bookKey)
         local displayTitle = book and book.title or bookKey
         frame.title:SetText(string.format(L["Edit Book: %s"], displayTitle))
         frame.titleInput:SetText(displayTitle)
-        frame.titleInput:Disable()
+        frame.titleInput:Enable()
 
         if book then
             frame.contentInput:SetText(book.content)
             ResetContentInputState(frame)
-            RebuildCollectionButtons(frame, book.collection)
+            RefreshCollectionPicker(frame, book.collection)
         else
-            RebuildCollectionButtons(frame, nil)
+            RefreshCollectionPicker(frame, nil)
         end
 
         local saved = ParchmentReaderDB.customBooks and ParchmentReaderDB.customBooks[bookKey]
@@ -575,7 +556,7 @@ function ParchmentReader:ShowBookEditor(bookKey)
         frame.contentInput:SetText("")
         ResetContentInputState(frame)
 
-        RebuildCollectionButtons(frame, ParchmentReader.currentCollection)
+        RefreshCollectionPicker(frame, ParchmentReader.currentCollection)
         frame.statusLabel:Hide()
         frame.deleteBtn:Hide()
     end
@@ -607,60 +588,103 @@ function ParchmentReader:SaveBook()
         return
     end
 
-    local collection = frame.selectedCollection
-    local newKey = self:BookKey(collection, title)
-    local oldKey = frame.editingBook
-    local createdAt = nil
+    local ok, newKey, reason = self:SaveCustomBook(
+        frame.editingBook, title, content, frame.selectedCollection, frame.savedBookBaseline)
+    if not ok then
+        if reason == "duplicate" then self.PRUI.SetEditBoxInvalid(frame.titleInput, true) end
+        return
+    end
+    if frame.quickNoteSave then ParchmentReaderDB.lastQuickNote = newKey end
+    if self.RefreshQuickNoteResumeRow then self:RefreshQuickNoteResumeRow() end
+    frame.isDirty = false
+    InvalidateEditorConfirmations(frame)
+    frame:Hide()
+end
 
-    if oldKey then
 
-        if oldKey ~= newKey then
-
-            if self.books[newKey] then
-                self:PrintMessage(
-                    "A book with this title already exists in the selected collection.")
-                return
-            end
-
-            local oldSaved = ParchmentReaderDB.customBooks[oldKey]
-            createdAt = oldSaved and oldSaved.createdAt
-
-            ParchmentReaderDB.customBooks[oldKey] = nil
-            self.books[oldKey] = nil
-
-            if ParchmentReaderDB.bookPages and ParchmentReaderDB.bookPages[oldKey] then
-                ParchmentReaderDB.bookPages[newKey] = ParchmentReaderDB.bookPages[oldKey]
-                ParchmentReaderDB.bookPages[oldKey] = nil
-            end
-            self:MoveReadingPosition(oldKey, newKey)
-            if ParchmentReaderDB.selectedBook == oldKey then
-                ParchmentReaderDB.selectedBook = newKey
-            end
-
-            if self.currentBook == oldKey then
-                self.currentBook = newKey
-            end
-        else
-            local existing = ParchmentReaderDB.customBooks[newKey]
-            createdAt = existing and existing.createdAt
+function ParchmentReader:SaveCustomBook(oldKey, title, content, collection, baseline)
+    if collection ~= nil then
+        local found = false
+        for _, name in ipairs(ParchmentReaderDB.collections or {}) do
+            if name == collection then found = true; break end
         end
-    else
+        if not found then
+            self:PrintMessage("The selected collection no longer exists. Choose another collection.")
+            return false
+        end
+    end
+    local newKey = self:BookKey(collection, title)
+    local savedBooks = ParchmentReaderDB.customBooks or {}
+    local oldBook = oldKey and self.books[oldKey]
+    if oldKey and not oldBook then
+        self:PrintMessage(baseline and "This book changed or was deleted. Your draft has been kept." or "Book not found.")
+        return false
+    end
 
-        if self.books[newKey] then
-            self:PrintMessage(
-                "A book with this title already exists in the selected collection.")
-            return
+
+    if oldKey ~= newKey and (self.books[newKey] or savedBooks[newKey]) then
+        self:PrintMessage(
+            "A book with this title already exists in the selected collection.")
+        return false, nil, "duplicate"
+    end
+
+    if oldKey and baseline and not self:SavedBookMatchesBaseline(oldKey, baseline) then
+        self:PrintMessage("This book changed or was deleted. Your draft has been kept.")
+        return false
+    end
+
+    local oldSaved = oldKey and savedBooks[oldKey]
+    local createdAt = type(oldSaved) == "table" and oldSaved.createdAt or nil
+    local rekeyed = oldKey and oldKey ~= newKey
+    local contentChanged = oldBook and oldBook.content ~= content
+
+    if oldKey and self.currentBook == oldKey then
+
+
+        self:SyncReadingPosition()
+        if rekeyed or contentChanged then
+            self:CancelReaderJumpRequests()
+        end
+        if contentChanged then
+            self:EndContentSearchNavigation(true)
+            if rekeyed then
+                self.currentReadingOffset = self:ResolveReadingPosition(
+                    self:NormalizeLayoutText(content),
+                    self:GetSavedReadingPosition(oldKey)) or self.currentReadingOffset
+            end
+        elseif rekeyed and self.readerSearchNavigation
+            and self.readerSearchNavigation.bookKey == oldKey
+        then
+            self.readerSearchNavigation.bookKey = newKey
+        end
+    end
+
+    if rekeyed then
+        savedBooks[oldKey] = nil
+        self.books[oldKey] = nil
+        if ParchmentReaderDB.bookPages and ParchmentReaderDB.bookPages[oldKey] then
+            ParchmentReaderDB.bookPages[newKey] = ParchmentReaderDB.bookPages[oldKey]
+            ParchmentReaderDB.bookPages[oldKey] = nil
+        end
+        self:MoveReadingPosition(oldKey, newKey)
+        self:RekeyLibraryViewBook(oldKey, newKey)
+        if ParchmentReaderDB.selectedBook == oldKey then
+            ParchmentReaderDB.selectedBook = newKey
+        end
+        if self.currentBook == oldKey then
+            self.currentBook = newKey
         end
     end
 
 
-    ParchmentReaderDB.customBooks = ParchmentReaderDB.customBooks or {}
+    ParchmentReaderDB.customBooks = savedBooks
     local now = time()
     ParchmentReaderDB.customBooks[newKey] = {
         content    = content,
         collection = collection,
         createdAt  = createdAt or now,
         modifiedAt = now,
+        revision = (type(oldSaved) == "table" and oldSaved.revision or 0) + 1,
     }
 
 
@@ -672,8 +696,7 @@ function ParchmentReader:SaveBook()
         collection = collection,
     }
 
-    frame.isDirty = false
-    frame:Hide()
+    if rekeyed then self:RekeyOpenBookReferences(oldKey, newKey) end
 
 
     if ParchmentReaderFrame then
@@ -683,9 +706,11 @@ function ParchmentReader:SaveBook()
 
     if ParchmentReaderFrame and ParchmentReaderFrame:IsShown() then
         if self.currentBook == newKey then
-            self:UpdateReader()
+            self:UpdateReader(rekeyed and "book-key-changed" or nil)
         end
     end
+    if self.RefreshQuickNoteResumeRow then self:RefreshQuickNoteResumeRow() end
+    return true, newKey
 end
 
 function ParchmentReader:DeleteBook()
@@ -697,8 +722,9 @@ function ParchmentReader:DeleteBook()
     local book = self.books[bookKey]
     local displayTitle = book and book.title or bookKey
 
-    StaticPopup_Show("PARCHMENTREADER_DELETE", displayTitle, nil, {
-        bookKey = bookKey,
-        editorFrame = frame,
-    })
+    if frame.deletePopup and frame.deletePopup:IsShown() then return end
+    frame.pendingDeleteData = {bookKey = bookKey, editorFrame = frame,
+        generation = frame.draftGeneration}
+    frame.deletePopup = StaticPopup_Show(
+        "PARCHMENTREADER_DELETE", displayTitle, nil, frame.pendingDeleteData)
 end

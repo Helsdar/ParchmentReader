@@ -11,7 +11,6 @@ local RESIZE_DEBOUNCE_SECONDS = 0.12
 local SMOOTH_SCROLL_SPEED = 14
 local WHEEL_LINE_COUNT = 4
 local LAYOUT_CACHE_LIMIT = 2
-local SEARCH_MATCH_COLOR = "|cFFFFD36A"
 local SEARCH_MATCH_COLOR_END = "|r"
 local RETURN_TO_BEGINNING_POPUP = "PARCHMENTREADER_RETURN_TO_BEGINNING"
 local GO_TO_END_POPUP = "PARCHMENTREADER_GO_TO_END"
@@ -264,7 +263,7 @@ local function ConfigureReaderText(fontString)
     fontString:SetSpacing(2)
     fontString:SetNonSpaceWrap(true)
     local color = ParchmentReader.Theme:Get("text", "primary")
-    fontString:SetTextColor(color[1], color[2], color[3], color[4])
+    ParchmentReader.Theme:BindColor(fontString, "SetTextColor", color)
 end
 
 local function HideTextPool(frame)
@@ -298,7 +297,9 @@ end
 function ParchmentReader:ApplyFontTo(fontString)
     local fontName = ParchmentReaderDB.fontName or "ChatFontNormal"
     local fontSize = tonumber(ParchmentReaderDB.fontSize) or 14
-    fontString:SetFontObject(GetReaderFontObject(fontName, fontSize))
+    local fontObject = GetReaderFontObject(fontName, fontSize)
+    fontString:SetFontObject(fontObject)
+    ParchmentReader.Theme:ApplyTextShadow(fontString, fontObject)
 end
 
 function ParchmentReader:InitializeReaderTextObjects(frame)
@@ -542,7 +543,7 @@ local function HighlightActiveSearchMatch(layout, chunk)
     local localEnd = highlightEnd - chunk.startOffset
     return table.concat({
         string.sub(chunk.text, 1, localStart),
-        SEARCH_MATCH_COLOR,
+        ParchmentReader.Theme:SearchMatchColor(),
         string.sub(chunk.text, localStart + 1, localEnd),
         SEARCH_MATCH_COLOR_END,
         string.sub(chunk.text, localEnd + 1),
@@ -652,6 +653,132 @@ function ParchmentReader:UpdateReaderProgress(scrollOffset)
     end
 end
 
+function ParchmentReader:GetCurrentReaderViewportOffset()
+    local frame = ParchmentReaderFrame
+    local layout = self.readerLayoutMetrics
+    if not frame or not frame.contentScroll
+        or not layout or layout.bookKey ~= self.currentBook
+    then
+        return nil
+    end
+
+
+
+    local scrollOffset = Clamp(
+        frame.contentScroll:GetVerticalScroll() or 0,
+        0,
+        GetMaximumScroll(frame, layout))
+    return ScrollToOffset(frame, layout, scrollOffset)
+end
+
+local function FindFirstPrefixAtHeight(frame, chunk, minimumHeight)
+    if MeasurePrefixHeight(frame, chunk, #chunk.text) < minimumHeight then return nil end
+    local low, high = 0, #chunk.text
+    while high - low > 4 do
+        local middle = ParchmentReader:SnapReadingOffset(
+            chunk.text, math.floor((low + high) / 2))
+        if middle <= low then middle = NextUTF8Offset(chunk.text, low) end
+        if middle >= high then break end
+        if MeasurePrefixHeight(frame, chunk, middle) >= minimumHeight then
+            high = middle
+        else
+            low = middle
+        end
+    end
+    local candidate = NextUTF8Offset(chunk.text, low)
+    while candidate > low and candidate <= high do
+        if MeasurePrefixHeight(frame, chunk, candidate) >= minimumHeight then
+            return candidate
+        end
+        low = candidate
+        candidate = NextUTF8Offset(chunk.text, low)
+    end
+    return nil
+end
+
+local function MeasureBookmarkCharacterRow(frame, layout, chunk, characterStart)
+    local characterEnd = NextUTF8Offset(chunk.text, characterStart - 1)
+    local wordStart = characterStart
+    while wordStart > 1 and not chunk.text:sub(wordStart - 1, wordStart - 1):match("%s") do
+        wordStart = wordStart - 1
+    end
+    local wordEnd = (chunk.text:find("%s", characterStart) or (#chunk.text + 1)) - 1
+    local prefixHeight = MeasurePrefixHeight(frame, chunk, characterEnd)
+
+
+    if MeasureTextHeight(frame, chunk.text:sub(wordStart, wordEnd)) <= layout.lineHeight + 0.05 then
+        characterStart = wordStart
+        prefixHeight = MeasurePrefixHeight(frame, chunk, wordEnd)
+    end
+    return characterStart - 1, prefixHeight, wordEnd
+end
+
+function ParchmentReader:GetReaderBookmarkAnchor()
+    local frame = ParchmentReaderFrame
+    local layout = self.readerLayoutMetrics
+    if not frame or not frame.contentScroll or not layout
+        or layout.bookKey ~= self.currentBook or layout.content == ""
+    then
+        return nil
+    end
+
+    local scrollOffset = Clamp(
+        frame.contentScroll:GetVerticalScroll() or 0,
+        0,
+        GetMaximumScroll(frame, layout))
+    local viewportHeight = frame.contentScroll:GetHeight()
+    local firstChunk = FindChunkForY(layout, math.max(0, scrollOffset - CONTENT_PADDING_TOP))
+    if not firstChunk then return nil end
+    for chunkIndex = firstChunk, #layout.chunks do
+        local chunk = layout.chunks[chunkIndex]
+        local chunkTop = CONTENT_PADDING_TOP + chunk.top - scrollOffset
+        if chunkTop >= viewportHeight then break end
+
+
+
+        local prefixEnd = FindFirstPrefixAtHeight(
+            frame, chunk, math.max(0, -chunkTop) + layout.lineHeight)
+        local searchAt = prefixEnd
+            and self:SnapReadingOffset(chunk.text, prefixEnd - 1) + 1
+        while searchAt and searchAt <= #chunk.text do
+            local characterStart = chunk.text:find("%S", searchAt)
+            if not characterStart then break end
+            local offset, prefixHeight, wordEnd = MeasureBookmarkCharacterRow(
+                frame, layout, chunk, characterStart)
+            local top = chunkTop + prefixHeight - layout.lineHeight
+            if top >= -0.05 then
+                if top + layout.lineHeight > viewportHeight + 0.05 then return nil end
+                return chunk.startOffset + offset, math.max(0, top), layout.lineHeight
+            end
+            searchAt = wordEnd + 1
+        end
+    end
+    return nil
+end
+
+function ParchmentReader:GetReaderBookmarkPreviewBounds()
+    local _, top, height = self:GetReaderBookmarkAnchor()
+    return top, height
+end
+
+function ParchmentReader:ScrollReaderToBookmarkOffset(offset)
+    local frame = ParchmentReaderFrame
+    local layout = self.readerLayoutMetrics
+    if not frame or not layout or layout.bookKey ~= self.currentBook then return false end
+    local safeOffset = self:SnapReadingOffset(layout.content, offset)
+    local chunkIndex = FindChunkForOffset(layout, safeOffset)
+    if not chunkIndex then return false end
+    local chunk = layout.chunks[chunkIndex]
+    local characterStart = chunk.text:find("%S", safeOffset - chunk.startOffset + 1)
+    local targetScroll = OffsetToScroll(frame, layout, safeOffset)
+    if characterStart then
+        local _, prefixHeight = MeasureBookmarkCharacterRow(frame, layout, chunk, characterStart)
+        targetScroll = CONTENT_PADDING_TOP + chunk.top + math.max(0, prefixHeight - layout.lineHeight)
+    end
+    self:ScrollReaderTo(targetScroll, true)
+    return true
+end
+
 function ParchmentReader:CommitReadingPosition(scrollOffset)
     local frame = ParchmentReaderFrame
     local layout = self.readerLayoutMetrics
@@ -705,6 +832,11 @@ function ParchmentReader:HandleReaderScroll(scrollOffset)
     local clampedScroll = Clamp(scrollOffset or 0, 0, GetMaximumScroll(frame, layout))
     self:RenderVisibleReaderChunks(clampedScroll)
     self:UpdateReaderProgress(clampedScroll)
+    if frame.bookmarkPreview and frame.bookmarkPreview.previewRequested
+        and self.RefreshBookmarkPreview
+    then
+        self:RefreshBookmarkPreview()
+    end
 end
 
 function ParchmentReader:StopReaderScrollAnimation()

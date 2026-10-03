@@ -27,15 +27,19 @@ Right-click any book for its actions. You can edit its content or move it to ano
 
 Use the search field to find words in book titles or collection names. Toggle Aa inside the field when you also want to find a complete phrase in book content. The collection selector can show every book or only the books in one collection. Collection actions let you create, rename, and delete collections without losing their books.
 
+Use the three icons below search to choose Library, Favorites, or Recent. The collection filter beside them narrows that section without changing your search. Right-click a book and choose Add to Favorites or Remove from Favorites. A small star marks favorite books; it is not a button. Recent keeps the 20 books you explicitly opened, newest first; opening a book again moves it to the top. Clear Reading History in Settings asks for confirmation and removes only that history, without closing your book or changing your favorites. If a collection has no matching favorites, recent books, or search results, All Collections removes only that filter and keeps the section and search. A blank collection in Library without a search still offers Add Book.
+
 QUICK NOTE
 
 Quick Note is a small writing window for capturing text without interrupting the Reader. Saved notes become ordinary books in the Notes collection and can then be edited, moved, or deleted like anything else.
 
-The Reader, Toggle Compact Mode, Minimize / Restore, and Quick Note shortcuts can be assigned in the addon's Settings or in WoW's native keybinding interface.
+The last-note row in Quick Note shows the latest note saved through this window. Resume continues that same saved book in its current collection. Save Changes closes the window, and New Note starts fresh after confirming any unsaved changes. Until the first tracked save, the row explains that no saved quick note is available. Reading or editing another book does not change the target.
+
+The Reader, Toggle Compact Mode, Minimize / Restore, Open Quick Note, and Resume Last Quick Note shortcuts can be assigned in the addon's Settings or in WoW's native keybinding interface.
 
 WINDOW MODES
 
-Compact Mode hides the library and leaves the reading area visible. Restore the library with the control on the left edge.
+Compact Mode hides the library and leaves the reading area visible. Its side rail contains Library and Quick Note. The Library control restores the expanded sidebar without changing your current section, collection, or search.
 
 Minimize turns the Reader into a small floating parchment icon. Click the icon to restore the same window. Its menu can lock the icon in place after you position it.
 
