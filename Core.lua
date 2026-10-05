@@ -59,6 +59,8 @@ local DEFAULTS = {
     fontName        = "ChatFontNormal",
     sidebarCollapsed = false,
     transparencyMode = "off",
+    readerCustomTransparency = 50,
+    readerCustomTransparencyUntilHovered = false,
     readerCombatTransparency = false,
     floatingLauncherX = ParchmentReader.DEFAULT_LAUNCHER_X,
     floatingLauncherY = ParchmentReader.DEFAULT_LAUNCHER_Y,
@@ -76,11 +78,20 @@ local TRANSPARENCY_MODES = {
     off = true,
     always = true,
     smart = true,
+    custom = true,
 }
 
 function ParchmentReader:NormalizeTransparencyMode(mode)
     if TRANSPARENCY_MODES[mode] then return mode end
     return DEFAULTS.transparencyMode
+end
+
+function ParchmentReader:NormalizeCustomTransparency(value)
+    local amount = tonumber(value)
+    if not amount or amount ~= amount or amount == math.huge or amount == -math.huge then
+        return DEFAULTS.readerCustomTransparency
+    end
+    return math.floor(math.max(0, math.min(100, amount)) + 0.5)
 end
 
 local function ApplyDefaults(t)
@@ -1278,6 +1289,10 @@ _boot:SetScript("OnEvent", function(self, event, addonName)
         ParchmentReader:RefreshLocalizedGlobals()
         ParchmentReaderDB.transparencyMode =
             ParchmentReader:NormalizeTransparencyMode(ParchmentReaderDB.transparencyMode)
+        ParchmentReaderDB.readerCustomTransparency =
+            ParchmentReader:NormalizeCustomTransparency(ParchmentReaderDB.readerCustomTransparency)
+        ParchmentReaderDB.readerCustomTransparencyUntilHovered =
+            ParchmentReaderDB.readerCustomTransparencyUntilHovered == true
         ParchmentReaderDB.readerCombatTransparency =
             ParchmentReaderDB.readerCombatTransparency == true
         ParchmentReaderDB.floatingLauncherLocked =

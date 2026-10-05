@@ -55,6 +55,7 @@ jobs:
           persist-credentials: false
 
       - name: Validate release tag and manifests
+        id: manifests
         shell: bash
         run: |
           if [[ ! "$GITHUB_REF_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -65,8 +66,8 @@ jobs:
           mapfile -d '' tocs < <(
             find . -maxdepth 1 -type f -name 'ParchmentReader*.toc' -print0
           )
-          if (( ${#tocs[@]} != 4 )); then
-            echo "Expected exactly four ParchmentReader TOC files." >&2
+          if (( ${#tocs[@]} != 5 )); then
+            echo "Expected exactly five ParchmentReader TOC files." >&2
             exit 1
           fi
 
@@ -78,11 +79,37 @@ jobs:
             fi
           done
 
+          # Forever's 16001 must not become Retail 1.60.1 upload metadata.
+          # Keep all five manifests in the package; derive normal upload tags
+          # only from the four clients understood by the pinned packager.
+          package_game_versions=$(python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          game_versions = []
+          for name in ("ParchmentReader.toc", "ParchmentReader_Mists.toc",
+                       "ParchmentReader_TBC.toc", "ParchmentReader_Vanilla.toc"):
+              text = Path(name).read_text(encoding="utf-8-sig")
+              matches = re.findall(r"^## Interface:[ \t]*(.*)$", text, re.MULTILINE)
+              if len(matches) != 1:
+                  raise ValueError(f"{name}: expected one Interface field")
+              for item in matches[0].split(","):
+                  interface = item.strip()
+                  if not re.fullmatch(r"[1-9][0-9]{4,5}", interface):
+                      raise ValueError(f"{name}: invalid Interface {interface!r}")
+                  value = int(interface)
+                  game_versions.append(f"{value // 10000}.{value // 100 % 100}.{value % 100}")
+          print(",".join(dict.fromkeys(game_versions)))
+          PY
+          )
+          echo "package_game_versions=$package_game_versions" >> "$GITHUB_OUTPUT"
+
       - name: Build package without uploading
         uses: BigWigsMods/packager@6d50adb6e8517eefef63f4afb16a6518166a6b28 # v2.5.1
         with:
           args: >-
             -d -u -p 1650935 -w 0 -a BKpglP6E
+            -g "${{ steps.manifests.outputs.package_game_versions }}"
             -r "${{ runner.temp }}/addon-dry-run"
             -n "{package-name}-{project-version}"
           pandoc: false
@@ -118,6 +145,7 @@ jobs:
               ParchmentReader/Bindings.xml \
               ParchmentReader/LICENSE \
               ParchmentReader/ParchmentReader.toc \
+              ParchmentReader/ParchmentReader_Camelot.toc \
               ParchmentReader/ParchmentReader_Mists.toc \
               ParchmentReader/ParchmentReader_TBC.toc \
               ParchmentReader/ParchmentReader_Vanilla.toc
@@ -157,6 +185,7 @@ jobs:
         with:
           args: >-
             -u -p 1650935 -w 0 -a BKpglP6E
+            -g "${{ steps.manifests.outputs.package_game_versions }}"
             -n "{package-name}-{project-version}"
           pandoc: false
         env:
