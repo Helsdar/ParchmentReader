@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.1 — 2026-10-05
+
+- Added Custom reader transparency with a live 0–100% slider and an optional
+  Transparent until hovered setting. Preferences persist; existing Off, Always,
+  and Smart presets remain available. Combat transparency uses the custom amount.
+- Added a light-theme slider tooltip recommending Azeroth Glass or Transparent
+  until hovered when high transparency makes dark text harder to read.
+- Includes the existing WoW Forever Beta compatibility for client 1.60.1
+  (Interface 16001) alongside the four original clients in the shared package.
+  The new transparency update was tested in Retail; no additional Forever
+  in-game verification is claimed for this release.
+
 ## 2.0.0 — 2026-10-03
 
 - Added Library, Favorites, and Recent views. Favorite books keep their star

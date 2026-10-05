@@ -27,6 +27,10 @@ resizable window.
   gameplay keys available to WoW at other times.
 - Configure reader size, font, transparency, shortcuts, and minimap access, with
   an optional transparent background override while in combat.
+- Choose Off, Always, Smart, or Custom reader transparency. Custom reveals a
+  live 0–100% slider and a Transparent until hovered checkbox. Text keeps its
+  opacity; at high transparency in a light theme, use Azeroth Glass or enable
+  Transparent until hovered to keep reading comfortable.
 - Choose Azeroth Glass, Light Parchment, or Warm Parchment, and assign the
   sun/moon theme switch independently. Themes update open windows immediately.
 - Find settings in Reading, Appearance, Controls, and General, with a live font
@@ -40,9 +44,23 @@ resizable window.
 - Mists of Pandaria Classic
 - Burning Crusade Classic Anniversary
 - Classic Era, Hardcore, and Season of Discovery
+- WoW Forever Beta 1.60.1 (Interface 16001)
 
-All supported clients use the same download. World of Warcraft automatically
-selects the appropriate manifest.
+All supported clients share one package. World of Warcraft automatically selects
+the appropriate manifest. On CurseForge, choose the file tagged for your client;
+Forever is published as a separate platform file containing the same addon.
+
+The WoW Forever Beta manifest supports client
+1.60.1.70205 (Interface 16001), using the native `_Camelot` suffix. Its loader
+and API diagnostic passed on Classic Beta PvP. The owner confirmed all six
+focused addon game checks passed there on 2026-10-03, including persistence
+after reload and a full client restart. The separate CurseForge 2.0.0 Forever
+file was owner-confirmed Approved on 2026-10-03. The original GitHub 2.0.0
+archive predates that additional manifest. The 2.0.1 package contains all five
+manifests. Forever uses a separate CurseForge file tagged only for 1.60.1;
+its addon payload is identical to the standard package.
+The custom-transparency update was accepted in Retail on 2026-10-05; additional
+client checks for this bounded change were waived by the owner.
 
 ## Downloads
 
@@ -64,7 +82,9 @@ World of Warcraft\_retail_\Interface\AddOns\ParchmentReader\ParchmentReader.toc
 ```
 
 Use `_classic_`, `_anniversary_`, or `_classic_era_` instead of `_retail_` for
-the corresponding Classic client.
+the corresponding Classic client. For WoW Forever Beta,
+use `_classic_beta_` and keep `ParchmentReader_Camelot.toc` alongside the base
+manifest.
 
 ## Getting started
 
@@ -89,6 +109,8 @@ the corresponding Classic client.
 - Use the Pin button in the Reader header to lock its position and size and
   restore it after reloads or logins.
 - Open **Keyboard Help** in the reader or editor to see available shortcuts.
+- In Appearance, choose **Custom — adjust transparency** to show the slider
+  and **Transparent until hovered** option.
 
 ## Commands
 
@@ -100,7 +122,9 @@ the corresponding Classic client.
 
 Books, collections, bookmarks, reading positions, and settings are stored by
 World of Warcraft in `ParchmentReaderDB`. Back up the account's `WTF` directory
-before reinstalling the game or moving to another computer.
+before updating the addon, reinstalling the game, or moving to another computer.
+Version 2.0.1 retains books, bookmarks, and reading progress, adding only the
+custom transparency amount and hover preference to settings.
 
 ## License
 

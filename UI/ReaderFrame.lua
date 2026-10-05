@@ -1795,7 +1795,7 @@ function ParchmentReader:SetReaderKeyboardNavigationEnabled(enabled)
     end
 end
 
-local function SetReaderSurfaceTransparency(surface, transparent)
+local function SetReaderSurfaceTransparency(surface, transparent, customAmount)
     if not surface then return end
 
     local backgroundAlpha = transparent and Theme:TransparentBackgroundAlpha() or 1
@@ -1806,12 +1806,15 @@ local function SetReaderSurfaceTransparency(surface, transparent)
 
         backgroundAlpha = LIGHT_TRANSPARENT_PAGE_ALPHA
     end
+    if customAmount ~= nil then
+        backgroundAlpha = 1 - customAmount / 100
+    end
     local shadowAlpha = transparent and TRANSPARENT_SHADOW_ALPHA or 1
     if surface.pruiBackground then
 
 
 
-        local shellHidden = transparent and Theme:IsLight()
+        local shellHidden = transparent and (Theme:IsLight() or customAmount ~= nil)
             and surface == ParchmentReaderFrame
         surface.pruiBackground:SetAlpha(shellHidden and 0 or backgroundAlpha)
     end
@@ -1989,15 +1992,34 @@ function ParchmentReader:RefreshReaderTransparency()
     local mode = self:NormalizeTransparencyMode(ParchmentReaderDB.transparencyMode)
     local combatOverride = ParchmentReaderDB.readerCombatTransparency == true
         and frame.readerInCombat == true
+    local customMode = mode == "custom"
+    local untilHovered = ParchmentReaderDB.readerCustomTransparencyUntilHovered == true
     local transparent = combatOverride or mode == "always"
         or (mode == "smart" and not IsReaderInteractionActive(frame))
-    if frame.readerBackgroundTransparent == transparent then return end
+        or (customMode and (not untilHovered or not IsReaderInteractionActive(frame)))
+    local customAmount = customMode and (transparent
+        and self:NormalizeCustomTransparency(ParchmentReaderDB.readerCustomTransparency) or 0) or nil
+
+    if customMode then transparent = customAmount > 0 end
+    if frame.readerBackgroundTransparent == transparent
+        and frame.readerBackgroundCustomTransparency == customAmount then return end
 
     frame.readerBackgroundTransparent = transparent
+    frame.readerBackgroundCustomTransparency = customAmount
     for _, surface in ipairs(frame.readerTransparencySurfaces) do
-        SetReaderSurfaceTransparency(surface, transparent)
+        SetReaderSurfaceTransparency(surface, transparent, customAmount)
     end
     SetReaderControlTransparency(frame, transparent)
+end
+
+function ParchmentReader:SetReaderCustomTransparency(amount)
+    ParchmentReaderDB.readerCustomTransparency = self:NormalizeCustomTransparency(amount)
+    self:RefreshReaderTransparency()
+end
+
+function ParchmentReader:SetReaderCustomTransparencyUntilHovered(enabled)
+    ParchmentReaderDB.readerCustomTransparencyUntilHovered = enabled == true
+    self:RefreshReaderTransparency()
 end
 
 function ParchmentReader:SetReaderTransparencyMode(mode)
@@ -3194,7 +3216,9 @@ function ParchmentReader:CreateReaderFrame()
         ParchmentReader:RefreshReaderTransparency()
     end)
     frame:HookScript("OnUpdate", function(_, elapsed)
-        if ParchmentReaderDB.transparencyMode ~= "smart" then return end
+        if ParchmentReaderDB.transparencyMode ~= "smart"
+            and not (ParchmentReaderDB.transparencyMode == "custom"
+                and ParchmentReaderDB.readerCustomTransparencyUntilHovered == true) then return end
         frame.readerTransparencyElapsed = (frame.readerTransparencyElapsed or 0) + elapsed
         if frame.readerTransparencyElapsed < 0.08 then return end
         frame.readerTransparencyElapsed = 0

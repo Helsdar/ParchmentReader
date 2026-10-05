@@ -441,7 +441,7 @@ function ParchmentReader:CreateSettingsFrame()
     end
     Text(appearance, L["Quick theme switching in the reader."], 0, 220, nil, "muted")
     Text(appearance, L["Reader transparency:"], 0, 260)
-    local transparencyHint
+    local transparencyHint, customTransparencyControls, combatTransparencyCheck
     local transparencyDropdown = PRUI.Dropdown(appearance, {
         name = "ParchmentReaderTransparencyDropdown", popoverName = "ParchmentReaderTransparencyPopover",
         popoverShadow = false, popoverPadding = 8, rowBorder = false, justifyH = "LEFT",
@@ -450,6 +450,7 @@ function ParchmentReader:CreateSettingsFrame()
             {value = "off", text = L["Off — standard background"]},
             {value = "always", text = L["Always — transparent background"]},
             {value = "smart", text = L["Smart — transparent until hovered"]},
+            {value = "custom", text = L["Custom — adjust transparency"]},
         },
         onValueChanged = function(value)
             ParchmentReader:SetReaderTransparencyMode(value)
@@ -459,14 +460,67 @@ function ParchmentReader:CreateSettingsFrame()
     transparencyDropdown:SetPoint("TOPLEFT", appearance, "TOPLEFT", 0, -276)
     frame.transparencyDropdown = transparencyDropdown
     transparencyHint = Text(appearance, "", 0, 312, nil, "muted")
+    customTransparencyControls = CreateFrame("Frame", nil, appearance)
+    customTransparencyControls:SetSize(456, 58)
+    customTransparencyControls:SetPoint("TOPLEFT", appearance, "TOPLEFT", 0, -308)
+    frame.customTransparencyControls = customTransparencyControls
+    local customTransparencyLabel = Text(customTransparencyControls, "", 0, 0, 216)
+    local customTransparencySlider = PRUI.Slider(customTransparencyControls, {
+        name = "ParchmentReaderCustomTransparencySlider", width = 216})
+    customTransparencySlider:SetPoint("TOPLEFT", customTransparencyControls, "TOPLEFT", 0, -27)
+    customTransparencySlider:SetMinMaxValues(0, 100)
+    customTransparencySlider:SetValueStep(1)
+    customTransparencySlider:SetObeyStepOnDrag(true)
+    customTransparencySlider:SetRangeLabels("0%", "100%")
+    customTransparencySlider.valueText:Hide()
+    PRUI.AttachTooltip(customTransparencySlider, function()
+        local text = L["0% keeps the standard background; 100% hides the background. Text stays visible."]
+        if Theme:IsLight() then
+            text = text .. "\n\n" .. L["At high transparency, light-theme text may be harder to read. Use a dark theme or enable Transparent until hovered."]
+        end
+        return text
+    end)
+    local function RefreshCustomTransparencyLabel(value)
+        customTransparencyLabel:SetText(string.format(L["Transparency: %d%%"], value))
+    end
+    customTransparencySlider:HookScript("OnValueChanged", function(_, value)
+        value = ParchmentReader:NormalizeCustomTransparency(value)
+        RefreshCustomTransparencyLabel(value)
+        if not frame.refreshingCustomTransparency then
+            ParchmentReader:SetReaderCustomTransparency(value)
+        end
+    end)
+    frame.customTransparencySlider = customTransparencySlider
+    local customHoverCheck = PRUI.Checkbox(customTransparencyControls, L["Transparent until hovered"], {
+        name = "ParchmentReaderCustomTransparencyHoverCheck", width = 216, height = 38})
+    customHoverCheck:SetPoint("TOPLEFT", customTransparencyControls, "TOPLEFT", 240, -12)
+    customHoverCheck.label:SetWordWrap(true)
+    customHoverCheck.label:SetMaxLines(2)
+    PRUI.AttachTooltip(customHoverCheck, L["The selected theme becomes opaque while you interact with the reader."])
+    customHoverCheck:HookScript("OnClick", function(self)
+        ParchmentReader:SetReaderCustomTransparencyUntilHovered(PRUI.IsCheckboxChecked(self))
+    end)
+    frame.customTransparencyHoverCheck = customHoverCheck
     function frame:RefreshTransparencyHint()
         local mode = ParchmentReaderDB.transparencyMode
+        local custom = mode == "custom"
+        customTransparencyControls:SetShown(custom)
+        transparencyHint:SetShown(not custom)
+        self.refreshingCustomTransparency = true
+        local amount = ParchmentReader:NormalizeCustomTransparency(ParchmentReaderDB.readerCustomTransparency)
+        customTransparencySlider:SetValue(amount)
+        RefreshCustomTransparencyLabel(amount)
+        customHoverCheck:SetChecked(ParchmentReaderDB.readerCustomTransparencyUntilHovered == true)
+        PRUI.RefreshCheckbox(customHoverCheck)
+        self.refreshingCustomTransparency = false
+        combatTransparencyCheck:ClearAllPoints()
+        combatTransparencyCheck:SetPoint("TOPLEFT", appearance, "TOPLEFT", 0, custom and -372 or -352)
         local key = mode == "smart" and "The selected theme becomes opaque while you interact with the reader."
             or mode == "always" and "The reader keeps its transparent background while you interact."
             or "Standard background of the selected theme."
         transparencyHint:SetText(L[key])
     end
-    local combatTransparencyCheck = PRUI.Checkbox(appearance, L["Transparent background in combat"], {
+    combatTransparencyCheck = PRUI.Checkbox(appearance, L["Transparent background in combat"], {
         name = "ParchmentReaderCombatTransparencyCheck", width = 456})
     combatTransparencyCheck:SetPoint("TOPLEFT", appearance, "TOPLEFT", 0, -352)
     combatTransparencyCheck:SetChecked(ParchmentReaderDB.readerCombatTransparency == true)
@@ -475,6 +529,7 @@ function ParchmentReader:CreateSettingsFrame()
     combatTransparencyCheck:HookScript("OnClick", function(self)
         ParchmentReader:SetReaderCombatTransparencyEnabled(PRUI.IsCheckboxChecked(self))
     end)
+    frame.combatTransparencyCheck = combatTransparencyCheck
 
     local keyboardNavigationCheck = PRUI.Checkbox(controls, L["Keyboard navigation"], {
         name = "ParchmentReaderKeyboardNavigationCheck", width = 456})
@@ -650,6 +705,8 @@ function ParchmentReader:CreateSettingsFrame()
             ParchmentReaderDB.hide = false
             ParchmentReaderDB.minimapAngle = 315
             ParchmentReaderDB.transparencyMode = "off"
+            ParchmentReaderDB.readerCustomTransparency = 50
+            ParchmentReaderDB.readerCustomTransparencyUntilHovered = false
             ParchmentReaderDB.readerCombatTransparency = false
             ParchmentReaderDB.readerMinimized = false
             ParchmentReader.readerMinimized = false
