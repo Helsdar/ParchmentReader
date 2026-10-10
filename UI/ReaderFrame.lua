@@ -1263,14 +1263,12 @@ local function CreateBookmarkRow(popover, index)
 
     local editButton = PRUI.IconButton(
         row,
-        "Interface\\Buttons\\UI-GuildButton-PublicNote-Up",
+        "Interface\\AddOns\\ParchmentReader\\Assets\\Pencil",
         L["Rename bookmark"],
         {
             width = 24,
             height = 24,
             iconSize = 14,
-            iconRole = "artwork",
-            texCoord = {0.08, 0.92, 0.08, 0.92},
         })
     editButton:SetPoint("RIGHT", deleteButton, "LEFT", -3, 0)
     row.editButton = editButton
@@ -1287,14 +1285,24 @@ local function CreateBookmarkRow(popover, index)
     row.jumpButton = jumpButton
 
     local nameText = jumpButton.pruiContent:CreateFontString(
-        nil, "OVERLAY", "GameFontNormalSmall")
+        nil, "OVERLAY", "GameFontNormal")
     nameText:SetPoint("TOPLEFT", jumpButton.pruiContent, "TOPLEFT", 9, -5)
-    nameText:SetPoint("TOPRIGHT", jumpButton.pruiContent, "TOPRIGHT", -7, -5)
     nameText:SetJustifyH("LEFT")
     nameText:SetWordWrap(false)
     nameText:SetMaxLines(1)
     SetFontStringColor(nameText, Theme:Get("text", "primary"))
     row.nameText = nameText
+
+    local progressText = jumpButton.pruiContent:CreateFontString(
+        nil, "OVERLAY", "GameFontNormalSmall")
+    progressText:SetPoint("TOPRIGHT", jumpButton.pruiContent, "TOPRIGHT", -7, -5)
+    progressText:SetWidth(36)
+    progressText:SetJustifyH("RIGHT")
+    progressText:SetWordWrap(false)
+    progressText:SetMaxLines(1)
+    SetFontStringColor(progressText, Theme:Get("text", "secondary"))
+    row.progressText = progressText
+    nameText:SetPoint("TOPRIGHT", progressText, "TOPLEFT", -5, 0)
 
     local contextText = jumpButton.pruiContent:CreateFontString(
         nil, "OVERLAY", "GameFontNormalSmall")
@@ -1303,9 +1311,21 @@ local function CreateBookmarkRow(popover, index)
     contextText:SetJustifyH("LEFT")
     contextText:SetWordWrap(false)
     contextText:SetMaxLines(1)
-    contextText:SetScale(0.86)
-    SetFontStringColor(contextText, Theme:Get("text", "muted"))
+    SetFontStringColor(contextText, Theme:Get("text", "secondary"))
     row.contextText = contextText
+    PRUI.AttachTooltip(jumpButton, function()
+        local layout = ParchmentReader.readerLayoutMetrics
+        if not row.bookmark or not layout
+            or layout.bookKey ~= ParchmentReader.currentBook
+        then
+            return nil
+        end
+        local excerpt = ParchmentReader:GetBookmarkExcerpt(
+            layout.content, row.bookmark, 240)
+        if excerpt == "" then return nil end
+
+        return (row.bookmarkName .. "\n\n" .. excerpt):gsub("|", "||")
+    end, {wrapText = true})
 
     local renameInput, renameContainer = PRUI.EditBox(row, {
         autoFocus = false,
@@ -1431,6 +1451,10 @@ RefreshBookmarkPopover = function(popover)
     popover.offset = Clamp(popover.offset or 0, 0, maximumOffset)
 
     for poolIndex, row in ipairs(popover.rows) do
+
+        row.jumpButton.pruiTooltipGeneration =
+            (row.jumpButton.pruiTooltipGeneration or 0) + 1
+        if GameTooltip:IsOwned(row.jumpButton) then GameTooltip:Hide() end
         local bookmarkIndex = popover.offset + poolIndex
         local bookmark = poolIndex <= visibleRowCount
             and bookmarks[bookmarkIndex]
@@ -1448,6 +1472,7 @@ RefreshBookmarkPopover = function(popover)
             row.nameText:SetText(row.bookmarkName)
 
             local context = ""
+            local percentage = ""
             if layout and layout.bookKey == bookKey then
                 local offset = ParchmentReader:ResolveBookmarkOffset(
                     layout.content,
@@ -1459,13 +1484,12 @@ RefreshBookmarkPopover = function(popover)
                     local excerpt = ParchmentReader:GetBookmarkExcerpt(
                         layout.content,
                         bookmark)
-                    context = string.format(
-                        "%d%%  %s",
-                        math.floor(progress + 0.5),
-                        excerpt)
+                    percentage = string.format("%d%%", math.floor(progress + 0.5))
+                    context = excerpt
                 end
             end
             row.contextText:SetText(context)
+            row.progressText:SetText(percentage)
             PRUI.SetButtonSelected(
                 row.jumpButton,
                 popover.activeBookmarkId == bookmark.id)

@@ -16,6 +16,8 @@ resizable window.
 - Read continuously with automatic position saving.
 - Group books into collections.
 - Add, rename, navigate, delete, and restore bookmarks.
+- Read clearer bookmark titles and excerpts with separate progress percentages,
+  longer wrapped excerpts on hover, and a theme-colored rename pencil.
 - Capture text quickly without leaving the game through Quick Note.
 - Resume the last saved Quick Note in its current collection, or start a new
   note without losing an unsaved draft.
@@ -125,6 +127,9 @@ World of Warcraft in `ParchmentReaderDB`. Back up the account's `WTF` directory
 before updating the addon, reinstalling the game, or moving to another computer.
 Version 2.0.1 retains books, bookmarks, and reading progress, adding only the
 custom transparency amount and hover preference to settings.
+Version 2.0.2 improves bookmark presentation without changing saved books,
+bookmarks, or reading progress. It is currently an unreleased source candidate;
+the latest published release remains 2.0.1.
 
 ## License
 

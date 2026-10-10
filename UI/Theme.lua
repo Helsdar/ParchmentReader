@@ -678,7 +678,7 @@ function PRUI.IconButton(parent, icon, tooltip, options)
     return button
 end
 
-function PRUI.AttachTooltip(frame, tooltip)
+function PRUI.AttachTooltip(frame, tooltip, options)
     frame:HookScript("OnEnter", function(self)
         self.pruiTooltipGeneration = (self.pruiTooltipGeneration or 0) + 1
         local generation = self.pruiTooltipGeneration
@@ -699,7 +699,11 @@ function PRUI.AttachTooltip(frame, tooltip)
             if not text or text == "" then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:ClearLines()
-            GameTooltip:SetText(tostring(text))
+            if options and options.wrapText then
+                GameTooltip:SetText(tostring(text), 1, 1, 1, 1, true)
+            else
+                GameTooltip:SetText(tostring(text))
+            end
             GameTooltip:Show()
         end)
     end)
