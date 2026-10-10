@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.2 — Unreleased
+## 2.0.2 — 2026-10-10
 
 - Improved bookmark title and excerpt readability, with progress percentages
   displayed in a dedicated slot beside the title.

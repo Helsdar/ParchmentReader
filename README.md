@@ -128,8 +128,7 @@ before updating the addon, reinstalling the game, or moving to another computer.
 Version 2.0.1 retains books, bookmarks, and reading progress, adding only the
 custom transparency amount and hover preference to settings.
 Version 2.0.2 improves bookmark presentation without changing saved books,
-bookmarks, or reading progress. It is currently an unreleased source candidate;
-the latest published release remains 2.0.1.
+bookmarks, or reading progress.
 
 ## License
 
