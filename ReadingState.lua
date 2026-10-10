@@ -6,7 +6,8 @@
 
 
 local ANCHOR_BYTES = 48
-local BOOKMARK_EXCERPT_BYTES = 72
+local BOOKMARK_EXCERPT_CHARACTERS = 72
+local BOOKMARK_TOOLTIP_CHARACTERS = 240
 local BOOKMARK_LIMIT_PER_BOOK = 50
 local SOFT_WRAP_MIN_CHARACTERS = 72
 local L = ParchmentReader.L
@@ -378,19 +379,29 @@ function ParchmentReader:RefreshBookmarkAnchor(content, bookmark, offset)
     bookmark.updatedAt = time()
 end
 
-function ParchmentReader:GetBookmarkExcerpt(content, bookmark)
+function ParchmentReader:GetBookmarkExcerpt(content, bookmark, characterLimit)
     local offset = self:ResolveBookmarkOffset(content, bookmark)
     if offset == nil then return "" end
 
+
+    local limit = Clamp(math.floor(tonumber(characterLimit)
+        or BOOKMARK_EXCERPT_CHARACTERS), 1, BOOKMARK_TOOLTIP_CHARACTERS)
     local excerptStart = offset
-    local excerptEnd = SnapUTF8Offset(
-        content,
-        math.min(#content, offset + BOOKMARK_EXCERPT_BYTES))
+    local excerptEnd = offset
+    for _ = 1, limit do
+        if excerptEnd >= #content then break end
+        excerptEnd = excerptEnd + 1
+        while excerptEnd < #content do
+            local byte = content:byte(excerptEnd + 1)
+            if byte < 128 or byte >= 192 then break end
+            excerptEnd = excerptEnd + 1
+        end
+    end
     if excerptEnd <= excerptStart then
-        excerptStart = SnapUTF8Offset(
-            content,
-            math.max(0, offset - BOOKMARK_EXCERPT_BYTES))
-        excerptEnd = offset
+        for _ = 1, limit do
+            if excerptStart <= 0 then break end
+            excerptStart = SnapUTF8Offset(content, excerptStart - 1)
+        end
     end
 
     local excerpt = content:sub(excerptStart + 1, excerptEnd)

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.2 — Unreleased
+
+- Improved bookmark title and excerpt readability, with progress percentages
+  displayed in a dedicated slot beside the title.
+- Added longer, wrapped bookmark excerpts on hover.
+- Bookmark excerpt lengths now count UTF-8 characters consistently across languages.
+- Added a theme-colored pencil for inline bookmark renaming.
+
 ## 2.0.1 — 2026-10-05
 
 - Added Custom reader transparency with a live 0–100% slider and an optional
