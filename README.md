@@ -42,7 +42,7 @@ resizable window.
 
 ## Supported clients
 
-- World of Warcraft Retail
+- World of Warcraft Retail, including 12.1.5
 - Mists of Pandaria Classic
 - Burning Crusade Classic Anniversary
 - Classic Era, Hardcore, and Season of Discovery
@@ -65,6 +65,9 @@ The custom-transparency update was accepted in Retail on 2026-10-05; additional
 client checks for this bounded change were waived by the owner.
 
 ## Downloads
+
+Version **2.0.3** adds Retail 12.1.5 compatibility metadata. Native Interface
+120105 and the focused Retail check were owner-confirmed on 2026-10-14.
 
 - [CurseForge](https://www.curseforge.com/wow/addons/parchment-reader)
 - [Wago Addons](https://addons.wago.io/addons/parchment-reader)
@@ -129,6 +132,8 @@ Version 2.0.1 retains books, bookmarks, and reading progress, adding only the
 custom transparency amount and hover preference to settings.
 Version 2.0.2 improves bookmark presentation without changing saved books,
 bookmarks, or reading progress.
+Version 2.0.3 updates compatibility and package-version metadata only;
+books, bookmarks, reading progress, settings, and their saved format are unchanged.
 
 ## License
 

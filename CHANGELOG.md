@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.3 — 2026-10-14
+
+- Marked the addon compatible with Retail 12.1.5.
+
 ## 2.0.2 — 2026-10-10
 
 - Improved bookmark title and excerpt readability, with progress percentages
