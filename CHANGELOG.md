@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.4 — Unreleased
+
+- Ordered bookmarks by reading position and revealed the selected bookmark
+  when reopening the list.
+- Repeated **+ Here** clicks at the same exact point now select the existing
+  bookmark and preserve its name.
+- Kept older duplicate bookmarks independently selectable, renameable, and
+  removable, with Undo support.
+- Shortened bookmark hover excerpts, ending near a word boundary with an
+  ellipsis when more text follows.
+
 ## 2.0.3 — 2026-10-14
 
 - Marked the addon compatible with Retail 12.1.5.

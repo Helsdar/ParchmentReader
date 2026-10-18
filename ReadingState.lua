@@ -236,6 +236,15 @@ function ParchmentReader:ResolveReadingPosition(content, position)
         return fallbackOffset
     end
 
+
+
+    if #before <= fallbackOffset
+        and content:sub(fallbackOffset - #before + 1, fallbackOffset) == before
+        and content:sub(fallbackOffset + 1, fallbackOffset + #after) == after
+    then
+        return fallbackOffset
+    end
+
     local bestOffset
     local bestDistance
     local searchAt = 1
@@ -313,9 +322,12 @@ local function NextBookmarkId(bookmarks)
     end
 end
 
-local function FindBookmark(bookmarks, bookmarkId)
+local function FindBookmark(bookmarks, selector)
+    if selector == nil then return nil end
     for index, bookmark in ipairs(bookmarks or {}) do
-        if type(bookmark) == "table" and bookmark.id == bookmarkId then
+        if type(bookmark) == "table" and (bookmark == selector
+            or type(selector) ~= "table" and bookmark.id == selector)
+        then
             return bookmark, index
         end
     end
@@ -329,6 +341,56 @@ function ParchmentReader:GetBookmarkLimit()
     return BOOKMARK_LIMIT_PER_BOOK
 end
 
+function ParchmentReader:GetBookmarksByPosition(bookKey, content)
+    local entries = {}
+    for index, bookmark in ipairs(self:GetBookmarks(bookKey)) do
+        entries[#entries + 1] = {
+            bookmark = bookmark,
+            index = index,
+            offset = type(content) == "string"
+                and self:ResolveBookmarkOffset(content, bookmark) or nil,
+        }
+    end
+    table.sort(entries, function(left, right)
+        if left.offset ~= right.offset then
+            if left.offset == nil then return false end
+            if right.offset == nil then return true end
+            return left.offset < right.offset
+        end
+        return left.index < right.index
+    end)
+    local bookmarks = {}
+    for index, entry in ipairs(entries) do bookmarks[index] = entry.bookmark end
+    return bookmarks
+end
+
+function ParchmentReader:FindBookmarkAtOffset(bookKey, content, offset)
+    if type(content) ~= "string" or content == "" then return nil end
+    local safeOffset = SnapUTF8Offset(content, offset)
+    for _, bookmark in ipairs(self:GetBookmarks(bookKey)) do
+        if type(bookmark) == "table"
+            and self:ResolveBookmarkOffset(content, bookmark) == safeOffset
+        then
+            local before = type(bookmark.before) == "string" and bookmark.before or ""
+            local after = type(bookmark.after) == "string" and bookmark.after or ""
+            if before .. after ~= "" then
+
+
+                if #before <= safeOffset
+                    and content:sub(safeOffset - #before + 1, safeOffset) == before
+                    and content:sub(safeOffset + 1, safeOffset + #after) == after
+                then
+                    return bookmark
+                end
+            elseif bookmark.contentLength == #content
+                and bookmark.offset == safeOffset
+            then
+                return bookmark
+            end
+        end
+    end
+end
+
 function ParchmentReader:AddBookmark(bookKey, content, offset)
     if type(content) ~= "string" or content == "" then
         return nil, "empty"
@@ -336,6 +398,8 @@ function ParchmentReader:AddBookmark(bookKey, content, offset)
 
     local bookmarks = GetBookmarkList(bookKey, true)
     if not bookmarks then return nil, "unavailable" end
+    local existing = self:FindBookmarkAtOffset(bookKey, content, offset)
+    if existing then return existing, "existing" end
     if #bookmarks >= BOOKMARK_LIMIT_PER_BOOK then
         return nil, "limit"
     end
@@ -379,7 +443,7 @@ function ParchmentReader:RefreshBookmarkAnchor(content, bookmark, offset)
     bookmark.updatedAt = time()
 end
 
-function ParchmentReader:GetBookmarkExcerpt(content, bookmark, characterLimit)
+function ParchmentReader:GetBookmarkExcerpt(content, bookmark, characterLimit, indicateContinuation)
     local offset = self:ResolveBookmarkOffset(content, bookmark)
     if offset == nil then return "" end
 
@@ -407,12 +471,27 @@ function ParchmentReader:GetBookmarkExcerpt(content, bookmark, characterLimit)
     local excerpt = content:sub(excerptStart + 1, excerptEnd)
     excerpt = strtrim(excerpt:gsub("%s+", " "))
     if excerpt == "" then return L["End of book"] end
+    if indicateContinuation and content:find("%S", excerptEnd + 1) then
+        if not content:sub(excerptEnd, excerptEnd):match("%s")
+            and not content:sub(excerptEnd + 1, excerptEnd + 1):match("%s")
+        then
+            local wholeWords = excerpt:match("^(.*) %S+$")
+
+
+            if wholeWords
+                and CountUTF8Characters(wholeWords) >= CountUTF8Characters(excerpt) / 2
+            then
+                excerpt = wholeWords
+            end
+        end
+        excerpt = excerpt .. "…"
+    end
     return excerpt
 end
 
-function ParchmentReader:RenameBookmark(bookKey, bookmarkId, name)
+function ParchmentReader:RenameBookmark(bookKey, selector, name)
     local bookmarks = GetBookmarkList(bookKey, false)
-    local bookmark = FindBookmark(bookmarks, bookmarkId)
+    local bookmark = FindBookmark(bookmarks, selector)
     local safeName = type(name) == "string" and strtrim(name) or ""
     if not bookmark or safeName == "" then return false end
 
@@ -421,9 +500,9 @@ function ParchmentReader:RenameBookmark(bookKey, bookmarkId, name)
     return true
 end
 
-function ParchmentReader:DeleteBookmark(bookKey, bookmarkId)
+function ParchmentReader:DeleteBookmark(bookKey, selector)
     local bookmarks = GetBookmarkList(bookKey, false)
-    local bookmark, index = FindBookmark(bookmarks, bookmarkId)
+    local bookmark, index = FindBookmark(bookmarks, selector)
     if not bookmark then return nil end
 
     table.remove(bookmarks, index)
