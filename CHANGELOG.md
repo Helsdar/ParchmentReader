@@ -1,15 +1,13 @@
 # Changelog
 
-## 2.0.4 — Unreleased
+## 2.0.4 — 2026-10-18
 
-- Ordered bookmarks by reading position and revealed the selected bookmark
-  when reopening the list.
-- Repeated **+ Here** clicks at the same exact point now select the existing
-  bookmark and preserve its name.
-- Kept older duplicate bookmarks independently selectable, renameable, and
-  removable, with Undo support.
-- Shortened bookmark hover excerpts, ending near a word boundary with an
-  ellipsis when more text follows.
+- Bookmarks are ordered by reading position, and reopening the list reveals the selected bookmark.
+- Repeated **+ Here** clicks at the same exact point select the existing bookmark and preserve its name.
+- Older duplicate bookmarks remain independently selectable, renameable, and removable, with Undo support.
+- Bookmark hover excerpts are shorter, end near a word boundary when practical, and show an ellipsis when more text follows.
+
+Existing bookmark records, names, and saved data format are preserved.
 
 ## 2.0.3 — 2026-10-14
 
