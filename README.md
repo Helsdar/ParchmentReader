@@ -69,12 +69,11 @@ client checks for this bounded change were waived by the owner.
 
 ## Downloads
 
-The latest published version is **2.0.3**, which adds Retail 12.1.5 compatibility
-metadata. Native Interface 120105 and the focused Retail check were confirmed
-on 2026-10-14.
-
-The **2.0.4** candidate is unreleased. It improves bookmark ordering, selection,
-exact-point reuse, older duplicate handling, and hover excerpts.
+Version **2.0.4** improves bookmark navigation. Bookmarks are ordered by reading
+position, reopening the list reveals the selected bookmark, and repeated
+**+ Here** clicks at the same exact point reuse the existing bookmark. Older
+duplicate bookmarks remain independently usable, and hover excerpts are shorter
+with continuation ellipses. Existing records, names, and saved data are preserved.
 
 - [CurseForge](https://www.curseforge.com/wow/addons/parchment-reader)
 - [Wago Addons](https://addons.wago.io/addons/parchment-reader)
