@@ -832,6 +832,11 @@ function ParchmentReader:HandleReaderScroll(scrollOffset)
     local clampedScroll = Clamp(scrollOffset or 0, 0, GetMaximumScroll(frame, layout))
     self:RenderVisibleReaderChunks(clampedScroll)
     self:UpdateReaderProgress(clampedScroll)
+    if frame.bookmarkPopover and frame.bookmarkPopover:IsShown()
+        and self.RefreshBookmarkAddControl
+    then
+        self:RefreshBookmarkAddControl(frame.bookmarkPopover)
+    end
     if frame.bookmarkPreview and frame.bookmarkPreview.previewRequested
         and self.RefreshBookmarkPreview
     then

@@ -15,9 +15,12 @@ resizable window.
   move between occurrences, and return without replacing saved reading progress.
 - Read continuously with automatic position saving.
 - Group books into collections.
-- Add, rename, navigate, delete, and restore bookmarks.
+- Add, rename, navigate, delete, and restore bookmarks, ordered by reading position.
+- Reopen the bookmark list at the selected bookmark. Repeated **+ Here** clicks
+  at the same exact point select the existing bookmark and keep its name.
+- Keep older duplicate bookmarks independently usable, including rename and Undo.
 - Read clearer bookmark titles and excerpts with separate progress percentages,
-  longer wrapped excerpts on hover, and a theme-colored rename pencil.
+  wrapped hover excerpts with continuation ellipses, and a theme-colored rename pencil.
 - Capture text quickly without leaving the game through Quick Note.
 - Resume the last saved Quick Note in its current collection, or start a new
   note without losing an unsaved draft.
@@ -66,8 +69,12 @@ client checks for this bounded change were waived by the owner.
 
 ## Downloads
 
-Version **2.0.3** adds Retail 12.1.5 compatibility metadata. Native Interface
-120105 and the focused Retail check were owner-confirmed on 2026-10-14.
+The latest published version is **2.0.3**, which adds Retail 12.1.5 compatibility
+metadata. Native Interface 120105 and the focused Retail check were confirmed
+on 2026-10-14.
+
+The **2.0.4** candidate is unreleased. It improves bookmark ordering, selection,
+exact-point reuse, older duplicate handling, and hover excerpts.
 
 - [CurseForge](https://www.curseforge.com/wow/addons/parchment-reader)
 - [Wago Addons](https://addons.wago.io/addons/parchment-reader)
@@ -134,6 +141,8 @@ Version 2.0.2 improves bookmark presentation without changing saved books,
 bookmarks, or reading progress.
 Version 2.0.3 updates compatibility and package-version metadata only;
 books, bookmarks, reading progress, settings, and their saved format are unchanged.
+Version 2.0.4 improves bookmark navigation and hover excerpts while preserving
+existing bookmark records, names, and saved data format.
 
 ## License
 

@@ -1209,29 +1209,73 @@ local function CloseBookmarkRename(row, save)
     if not row.renaming then return end
 
     local name = row.renameInput:GetText()
-    local bookmarkId = row.bookmarkId
+    local bookmark = row.renameBookmark
+    local bookKey = row.renameBookKey
     row.renaming = false
+    row.renameBookmark, row.renameBookKey = nil, nil
     row.renameInput:ClearFocus()
     row.renameContainer:Hide()
     row.jumpButton:Show()
 
     if save and strtrim(name or "") ~= "" then
         ParchmentReader:RenameBookmark(
-            ParchmentReader.currentBook,
-            bookmarkId,
+            bookKey,
+            bookmark,
             name)
     end
     RefreshBookmarkPopover(row.popover)
 end
 
 local function BeginBookmarkRename(row)
-    if not row.bookmarkId then return end
+    if type(row.bookmark) ~= "table" then return end
+    row.renameBookmark, row.renameBookKey = row.bookmark, row.bookKey
     row.renaming = true
     row.jumpButton:Hide()
     row.renameContainer:Show()
     row.renameInput:SetText(row.bookmarkName or "")
     row.renameInput:SetFocus()
     row.renameInput:HighlightText()
+end
+
+local function ConfigureBookmarkRowActions(row)
+    local popover = row.popover
+    row.jumpButton:SetScript("OnClick", function()
+        local layout = ParchmentReader.readerLayoutMetrics
+        local bookmark = row.bookmark
+        if not layout or not bookmark or row.bookKey ~= ParchmentReader.currentBook
+            or layout.bookKey ~= row.bookKey then return end
+        local belongsToBook = false
+        for _, saved in ipairs(ParchmentReader:GetBookmarks(row.bookKey)) do
+            if saved == bookmark then belongsToBook = true; break end
+        end
+        if not belongsToBook then return end
+
+        local offset = ParchmentReader:ResolveBookmarkOffset(layout.content, bookmark)
+        if offset == nil then return end
+        ParchmentReader:RefreshBookmarkAnchor(layout.content, bookmark, offset)
+        popover.activeBookmark = bookmark
+        popover.revealActive = true
+        ParchmentReader:EndContentSearchNavigation(true)
+        ParchmentReader:ScrollReaderToBookmarkOffset(offset)
+        RefreshBookmarkPopover(popover)
+    end)
+    row.editButton:SetScript("OnClick", function()
+        BeginBookmarkRename(row)
+    end)
+    row.deleteButton:SetScript("OnClick", function()
+        if row.bookKey ~= ParchmentReader.currentBook then return end
+        local bookmark, bookmarkIndex = ParchmentReader:DeleteBookmark(row.bookKey, row.bookmark)
+        if not bookmark then return end
+
+        popover.lastDeleted = {
+            bookKey = row.bookKey,
+            bookmark = bookmark,
+            index = bookmarkIndex,
+        }
+        if popover.activeBookmark == bookmark then popover.activeBookmark = nil end
+        RefreshBookmarkPopover(popover)
+        ParchmentReader:RefreshBookmarkControls()
+    end)
 end
 
 local function CreateBookmarkRow(popover, index)
@@ -1321,7 +1365,7 @@ local function CreateBookmarkRow(popover, index)
             return nil
         end
         local excerpt = ParchmentReader:GetBookmarkExcerpt(
-            layout.content, row.bookmark, 240)
+            layout.content, row.bookmark, 160, true)
         if excerpt == "" then return nil end
 
         return (row.bookmarkName .. "\n\n" .. excerpt):gsub("|", "||")
@@ -1354,45 +1398,7 @@ local function CreateBookmarkRow(popover, index)
     row.renameInput = renameInput
     row.renameContainer = renameContainer
 
-    jumpButton:SetScript("OnClick", function()
-        local layout = ParchmentReader.readerLayoutMetrics
-        local bookmark = row.bookmark
-        if not layout or not bookmark then return end
-
-        local offset = ParchmentReader:ResolveBookmarkOffset(
-            layout.content,
-            bookmark)
-        if offset == nil then return end
-
-        ParchmentReader:RefreshBookmarkAnchor(
-            layout.content,
-            bookmark,
-            offset)
-        popover.activeBookmarkId = bookmark.id
-        ParchmentReader:EndContentSearchNavigation(true)
-        ParchmentReader:ScrollReaderToBookmarkOffset(offset)
-        RefreshBookmarkPopover(popover)
-    end)
-    editButton:SetScript("OnClick", function()
-        BeginBookmarkRename(row)
-    end)
-    deleteButton:SetScript("OnClick", function()
-        local bookmark, bookmarkIndex = ParchmentReader:DeleteBookmark(
-            ParchmentReader.currentBook,
-            row.bookmarkId)
-        if not bookmark then return end
-
-        popover.lastDeleted = {
-            bookKey = ParchmentReader.currentBook,
-            bookmark = bookmark,
-            index = bookmarkIndex,
-        }
-        if popover.activeBookmarkId == row.bookmarkId then
-            popover.activeBookmarkId = nil
-        end
-        RefreshBookmarkPopover(popover)
-        ParchmentReader:RefreshBookmarkControls()
-    end)
+    ConfigureBookmarkRowActions(row)
 
     row:Hide()
     return row
@@ -1438,35 +1444,96 @@ local function UpdateBookmarkPopoverGeometry(popover, bookmarkCount)
     popover.emptyText:SetWidth(math.max(1, width - 32))
 end
 
+function ParchmentReader:RefreshBookmarkAddControl(popover)
+    if not popover or not popover.addButton then return end
+    local bookKey = self.currentBook
+    local layout = self.readerLayoutMetrics
+    local bookmarkLimit = self:GetBookmarkLimit()
+    local atLimit = #self:GetBookmarks(bookKey) >= bookmarkLimit
+    local canAdd = layout ~= nil and layout.bookKey == bookKey and #layout.content > 0
+    if canAdd and atLimit then
+        local offset = self:GetReaderBookmarkAnchor()
+        canAdd = offset ~= nil
+            and self:FindBookmarkAtOffset(bookKey, layout.content, offset) ~= nil
+    end
+    popover.addButton:SetText(atLimit and not canAdd
+        and string.format(L["%d max"], bookmarkLimit) or L["+  Here"])
+    if canAdd then
+        popover.addButton:Enable()
+    else
+        popover.addButton:Disable()
+        SetBookmarkPreviewShown(popover.readerFrame, false)
+    end
+end
+
 RefreshBookmarkPopover = function(popover)
     if not popover then return end
 
     local bookKey = ParchmentReader.currentBook
     local layout = ParchmentReader.readerLayoutMetrics
-    local bookmarks = bookKey and ParchmentReader:GetBookmarks(bookKey) or {}
-    local bookmarkLimit = ParchmentReader:GetBookmarkLimit()
+    local savedBookmarks = ParchmentReader:GetBookmarks(bookKey)
+    popover.bookStates = popover.bookStates or {}
+    if popover.bookKey ~= bookKey then
+        if popover.bookKey then
+            popover.bookStates[popover.bookKey] = {
+                activeBookmark = popover.activeBookmark,
+                offset = popover.offset,
+                bookmarks = popover.bookmarks,
+            }
+        end
+        local state = bookKey and popover.bookStates[bookKey] or {}
+        if state and state.bookmarks ~= savedBookmarks then state = nil end
+        popover.bookKey = bookKey
+        popover.activeBookmark = state and state.activeBookmark
+        popover.offset = state and state.offset or 0
+        popover.lastDeleted = nil
+        popover.revealActive = true
+    end
+    popover.bookmarks = savedBookmarks
+    local content = layout and layout.bookKey == bookKey and layout.content or nil
+    local bookmarks = bookKey and ParchmentReader:GetBookmarksByPosition(bookKey, content) or {}
+    local previousRowCount = popover.visibleRowCount
     UpdateBookmarkPopoverGeometry(popover, #bookmarks)
     local visibleRowCount = popover.visibleRowCount
     local maximumOffset = math.max(0, #bookmarks - visibleRowCount)
     popover.offset = Clamp(popover.offset or 0, 0, maximumOffset)
+    local activeIndex
+    for index, bookmark in ipairs(bookmarks) do
+        if type(bookmark) == "table" and bookmark == popover.activeBookmark then
+            activeIndex = index
+            break
+        end
+    end
+    if not activeIndex then popover.activeBookmark = nil end
+    if activeIndex and (popover.revealActive or previousRowCount ~= visibleRowCount) then
+        if activeIndex <= popover.offset then
+            popover.offset = activeIndex - 1
+        elseif activeIndex > popover.offset + visibleRowCount then
+            popover.offset = activeIndex - visibleRowCount
+        end
+        popover.offset = Clamp(popover.offset, 0, maximumOffset)
+    end
+    popover.revealActive = nil
 
     for poolIndex, row in ipairs(popover.rows) do
 
         row.jumpButton.pruiTooltipGeneration =
             (row.jumpButton.pruiTooltipGeneration or 0) + 1
         if GameTooltip:IsOwned(row.jumpButton) then GameTooltip:Hide() end
+        if row.renaming then
+            row.renaming = false
+            row.renameBookmark, row.renameBookKey = nil, nil
+            row.renameInput:ClearFocus()
+        end
         local bookmarkIndex = popover.offset + poolIndex
         local bookmark = poolIndex <= visibleRowCount
             and bookmarks[bookmarkIndex]
             or nil
         if type(bookmark) == "table" then
-            if row.renaming then
-                row.renaming = false
-                row.renameInput:ClearFocus()
-            end
             row.renameContainer:Hide()
             row.jumpButton:Show()
             row.bookmark = bookmark
+            row.bookKey = bookKey
             row.bookmarkId = bookmark.id
             row.bookmarkName = bookmark.name or L["Bookmark"]
             row.nameText:SetText(row.bookmarkName)
@@ -1492,29 +1559,18 @@ RefreshBookmarkPopover = function(popover)
             row.progressText:SetText(percentage)
             PRUI.SetButtonSelected(
                 row.jumpButton,
-                popover.activeBookmarkId == bookmark.id)
+                popover.activeBookmark == bookmark)
             row:Show()
         else
             row.bookmark = nil
+            row.bookKey = nil
             row.bookmarkId = nil
             row:Hide()
         end
     end
 
     popover.emptyText:SetShown(#bookmarks == 0)
-    local canAdd = layout ~= nil
-        and #layout.content > 0
-        and #bookmarks < bookmarkLimit
-    popover.addButton:SetText(
-        #bookmarks >= bookmarkLimit
-            and string.format(L["%d max"], bookmarkLimit)
-            or L["+  Here"])
-    if canAdd then
-        popover.addButton:Enable()
-    else
-        popover.addButton:Disable()
-        SetBookmarkPreviewShown(popover.readerFrame, false)
-    end
+    ParchmentReader:RefreshBookmarkAddControl(popover)
     if popover.offset > 0 then
         popover.scrollUpButton:Enable()
     else
@@ -1583,7 +1639,7 @@ local function CreateBookmarkPopover(frame, owner)
         local bookmarks = ParchmentReader.currentBook
             and ParchmentReader:GetBookmarks(ParchmentReader.currentBook)
             or {}
-        if #bookmarks >= ParchmentReader:GetBookmarkLimit() then
+        if #bookmarks >= ParchmentReader:GetBookmarkLimit() and not addButton:IsEnabled() then
             return string.format(
                 L["Maximum %d bookmarks per book"],
                 ParchmentReader:GetBookmarkLimit())
@@ -1603,18 +1659,15 @@ local function CreateBookmarkPopover(frame, owner)
         local offset = ParchmentReader:GetReaderBookmarkAnchor()
         if offset == nil then return end
 
-        local bookmark = ParchmentReader:AddBookmark(
+        local bookmark, status = ParchmentReader:AddBookmark(
             ParchmentReader.currentBook,
             layout.content,
             offset)
         if not bookmark then return end
 
-        popover.activeBookmarkId = bookmark.id
-        local bookmarks = ParchmentReader:GetBookmarks(ParchmentReader.currentBook)
-        popover.offset = math.max(
-            0,
-            #bookmarks - (popover.visibleRowCount or BOOKMARK_ROW_POOL_SIZE))
-        popover.lastDeleted = nil
+        popover.activeBookmark = bookmark
+        popover.revealActive = true
+        if status ~= "existing" then popover.lastDeleted = nil end
         RefreshBookmarkPopover(popover)
         ParchmentReader:RefreshBookmarkControls()
     end)
@@ -1650,10 +1703,11 @@ local function CreateBookmarkPopover(frame, owner)
         local deleted = popover.lastDeleted
         if not deleted or deleted.bookKey ~= ParchmentReader.currentBook then return end
 
-        ParchmentReader:RestoreBookmark(
+        local restored = ParchmentReader:RestoreBookmark(
             deleted.bookKey,
             deleted.bookmark,
             deleted.index)
+        if not restored then return end
         popover.lastDeleted = nil
         RefreshBookmarkPopover(popover)
         ParchmentReader:RefreshBookmarkControls()
@@ -1702,7 +1756,7 @@ local function CreateBookmarkPopover(frame, owner)
     end)
     ConfigureOutsideDismiss(popover)
     popover:HookScript("OnShow", function()
-        popover.offset = 0
+        popover.revealActive = true
         popover.lastDeleted = nil
         RefreshBookmarkPopover(popover)
     end)
