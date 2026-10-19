@@ -120,17 +120,81 @@ Theme.palettes.WarmParchment = {
     },
     shadow = {soft = {0.180, 0.137, 0.090, 0.12}, strong = {0.120, 0.090, 0.055, 0.30}},
 }
-Theme.names = {AzerothGlass = "Azeroth Glass", LightParchment = "Light Parchment", WarmParchment = "Warm Parchment"}
+
+Theme.palettes.HallowsEnd = {
+    bg = {
+        base = {23/255, 28/255, 25/255, 1},
+        surface = {29/255, 36/255, 31/255, 1},
+        sidebar = {20/255, 26/255, 22/255, 1},
+        control = {40/255, 48/255, 39/255, 1},
+        track = {12/255, 17/255, 13/255, 0.80},
+        popover = {23/255, 28/255, 25/255, 0.99},
+        popoverRow = {29/255, 36/255, 31/255, 0.98},
+        popoverAction = {40/255, 48/255, 39/255, 0.98},
+    },
+    border = {subtle = {180/255, 120/255, 65/255, 0.45}, elevated = {217/255, 154/255, 87/255, 0.60}},
+    accent = {gold = {217/255, 154/255, 87/255, 1}, goldDim = {217/255, 154/255, 87/255, 0.35}},
+    text = {
+        primary = {232/255, 221/255, 198/255, 1},
+        secondary = {194/255, 187/255, 167/255, 1},
+        muted = {149/255, 154/255, 133/255, 1},
+    },
+    state = {
+        clear = {0, 0, 0, 0}, hover = {217/255, 154/255, 87/255, 0.08},
+        active = {217/255, 154/255, 87/255, 0.18}, danger = {0.85, 0.35, 0.30, 1},
+    },
+    shadow = {soft = {0, 0, 0, 0.24}, strong = {0, 0, 0, 0.68}},
+}
+Theme.names = {AzerothGlass = "Azeroth Glass", LightParchment = "Light Parchment", WarmParchment = "Warm Parchment", HallowsEnd = "Hallow's End"}
 Theme.order = {"AzerothGlass", "LightParchment", "WarmParchment"}
 
+
+
+
+Theme.currentHoliday = {enabled = true, themeName = "HallowsEnd", seasonId = "hallows-end-2026"}
+
+function Theme:GetAvailableHoliday()
+    local event = self.currentHoliday
+    if type(event) == "table" and event.enabled == true and event.themeName == "HallowsEnd"
+        and type(event.seasonId) == "string" and event.seasonId ~= "" then return event end
+end
+
 function Theme:IsLight(value)
-    return (value or self.paletteName) ~= "AzerothGlass" and self.palettes[value or self.paletteName] ~= nil
+    local name = value or self.paletteName
+    return name == "LightParchment" or name == "WarmParchment"
+end
+
+function Theme:IsOrdinary(value)
+    return value == "AzerothGlass" or value == "LightParchment" or value == "WarmParchment"
+end
+
+function Theme:NormalizeSeasonalState(db)
+
+    db.holidayAppearanceEnabled = db.holidayAppearanceEnabled ~= false
+    db.themeName = self:NormalizeName(db.themeName)
+    if db.themeName == "HallowsEnd" then
+        local event = self:GetAvailableHoliday()
+        if not self:IsOrdinary(db.hallowsEndReturnTheme) then db.hallowsEndReturnTheme = "AzerothGlass" end
+        if not db.holidayAppearanceEnabled or not event
+            or (db.hallowsEndActiveSeason ~= nil and db.hallowsEndActiveSeason ~= event.seasonId) then
+
+
+            db.themeName = db.hallowsEndReturnTheme
+            db.hallowsEndReturnTheme, db.hallowsEndActiveSeason = nil, nil
+        else
+
+            db.hallowsEndActiveSeason = event.seasonId
+        end
+    else
+
+        db.hallowsEndReturnTheme, db.hallowsEndActiveSeason = nil, nil
+    end
 end
 
 
 function Theme:NormalizeSlots(db)
-    local moon = type(db.moonTheme) == "string" and self.palettes[db.moonTheme] and db.moonTheme or "AzerothGlass"
-    local sun = type(db.sunTheme) == "string" and self.palettes[db.sunTheme] and db.sunTheme or "LightParchment"
+    local moon = self:IsOrdinary(db.moonTheme) and db.moonTheme or "AzerothGlass"
+    local sun = self:IsOrdinary(db.sunTheme) and db.sunTheme or "LightParchment"
     if moon == sun then sun = moon == "LightParchment" and "AzerothGlass" or "LightParchment" end
     db.moonTheme, db.sunTheme = moon, sun
     return moon, sun
@@ -139,6 +203,10 @@ end
 function Theme:GetToggleTarget(db, current)
     local moon, sun = self:NormalizeSlots(db)
     current = current or self.paletteName
+    if current == "HallowsEnd" then
+        local target = self:IsOrdinary(db.hallowsEndReturnTheme) and db.hallowsEndReturnTheme or "AzerothGlass"
+        return target, target == moon and "moon" or target == sun and "sun" or self:IsLight(target) and "sun" or "moon"
+    end
     if current == moon then return sun, "sun" end
     if current == sun then return moon, "moon" end
     if self:IsLight(current) then return moon, "moon" end
@@ -155,6 +223,7 @@ Theme.bindings = setmetatable({}, {__mode = "k"})
 Theme.textBindings = setmetatable({}, {__mode = "k"})
 Theme.textShadows = setmetatable({}, {__mode = "k"})
 Theme.paperSurfaces = setmetatable({}, {__mode = "k"})
+Theme.holidayBackgrounds = setmetatable({}, {__mode = "k"})
 Theme.colorRoles = {}
 for _, palette in pairs(Theme.palettes) do
     for group, colors in pairs(palette) do
@@ -280,12 +349,19 @@ function Theme:Repaint(refreshEditBoxes)
         end
     end
     self:RefreshPaperSurfaces()
+    self:RefreshHolidayBackgrounds()
     if refreshEditBoxes then self:ScheduleEditBoxInkRefresh() end
 end
 
 function Theme:RefreshPaperSurfaces()
     for frame in pairs(self.paperSurfaces) do
         ParchmentReader.PRUI.RefreshPaperSurface(frame)
+    end
+end
+
+function Theme:RefreshHolidayBackgrounds()
+    for frame in pairs(self.holidayBackgrounds) do
+        ParchmentReader.PRUI.RefreshHolidayBackground(frame)
     end
 end
 
@@ -298,11 +374,13 @@ function Theme:SetPalette(value)
 end
 
 function Theme:SearchMatchColor()
+    if self.paletteName == "HallowsEnd" then return "|cFFA6BD78" end
     return self:IsLight() and "|cFF8A240C" or "|cFFFFD36A"
 end
 
 
 function Theme:AdaptText(text)
+    if self.paletteName == "HallowsEnd" then return (text:gsub("|cFFD1AD61", "|cFFD99A57")) end
     if not self:IsLight() then return text end
     return (text:gsub("|cFFD1AD61", "|cFF83511F"))
 end
@@ -484,7 +562,7 @@ function PRUI.RefreshPaperSurface(frame)
     if warm and not frame.pruiPaperTexture then
         local texture = frame:CreateTexture(nil, "BACKGROUND", nil, -6)
         texture:SetAllPoints()
-        texture:SetTexture("Interface\\AddOns\\ParchmentReader\\Assets\\WarmParchment")
+        texture:SetTexture("Interface\\AddOns\\ParchmentReader\\Assets\\WarmParchmentBC1")
         texture:SetVertexColor(1, 1, 1, 1)
         frame.pruiPaperTexture = texture
     end
@@ -508,10 +586,183 @@ function PRUI.SetPaperSurfaceAlpha(frame, alpha)
     if frame.pruiPaperTexture then frame.pruiPaperTexture:SetAlpha(0.30 * alpha) end
 end
 
+
+
+
+function PRUI.RefreshHolidayBackground(frame)
+    local binding = Theme.holidayBackgrounds[frame]
+    if not binding then return end
+    local shown = Theme.paletteName == "HallowsEnd" and ParchmentReader:CanUseHolidayAppearance()
+    for _, surface in ipairs(binding.surfaces) do
+        surface.pruiHolidayTransparent = shown
+        surface.pruiBackground:SetAlpha(shown and 0 or 1)
+    end
+    if not shown then
+        if frame.pruiHolidayBackground then frame.pruiHolidayBackground:Hide() end
+        return
+    end
+    local texture = frame.pruiHolidayBackground
+    if not texture then
+        texture = frame:CreateTexture(nil, "BACKGROUND", nil, -5)
+        texture:SetPoint("TOPLEFT", frame, "TOPLEFT", binding.inset, -binding.inset)
+        texture:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -binding.inset, binding.inset)
+        texture:SetTexture("Interface\\AddOns\\ParchmentReader\\Assets\\" .. binding.asset)
+        frame.pruiHolidayBackground = texture
+    end
+    texture:SetVertexColor(1, 1, 1, 1)
+    texture:SetAlpha(binding.alpha)
+
+
+    local width, height = frame:GetWidth() - 2 * binding.inset, frame:GetHeight() - 2 * binding.inset
+    if type(width) == "number" and type(height) == "number" and width > 0 and height > 0 then
+        local aspect = width / height
+        local u = math.min(1, aspect / binding.aspect) / binding.zoom
+        local v = math.min(1, binding.aspect / aspect) / binding.zoom
+        local left, top = (1 - u) * binding.alignX, (1 - v) * binding.alignY
+        texture:SetTexCoord(left, left + u, top, top + v)
+    end
+    texture:Show()
+end
+
+function PRUI.ApplyHolidayBackground(frame, asset, aspect, alpha, options)
+    options = options or {}
+    if not Theme.holidayBackgrounds[frame] then
+        frame:HookScript("OnSizeChanged", PRUI.RefreshHolidayBackground)
+        frame:HookScript("OnShow", PRUI.RefreshHolidayBackground)
+    end
+    Theme.holidayBackgrounds[frame] = {
+        asset = asset, aspect = aspect, alpha = alpha,
+        zoom = math.max(1, tonumber(options.zoom) or 1),
+        inset = math.max(0, tonumber(options.inset) or 0),
+        alignX = math.max(0, math.min(1, tonumber(options.alignX) or 1)),
+        alignY = math.max(0, math.min(1, tonumber(options.alignY) or 1)),
+        surfaces = options.surfaces or {},
+    }
+    PRUI.RefreshHolidayBackground(frame)
+end
+
 function PRUI.Panel(parent, options)
     options = options or {}
     local frame = CreateFrame("Frame", options.name, parent)
     return PRUI.ApplySurface(frame, options)
+end
+
+
+
+local function StackedRowPriority(button)
+    local enabled = button:IsEnabled()
+    if enabled and button.pruiPressed then return 4 end
+    if button.pruiSelected then return 3 end
+    if enabled and button.pruiHovered then return 2 end
+    if button.pruiStackedSelected then return 1 end
+    return 0
+end
+
+local function StackedRowNeighbor(button, key)
+    local neighbor = button[key]
+    if neighbor and neighbor.pruiStackedVisible and neighbor:IsShown() then
+        return neighbor
+    end
+end
+
+local function RefreshStackedRowEdges(button)
+    if not button or not button.pruiStackedRow then return end
+    local border = button.pruiBorder
+    local previous = StackedRowNeighbor(button, "pruiStackedPrevious")
+    local following = StackedRowNeighbor(button, "pruiStackedNext")
+    local priority = StackedRowPriority(button)
+    border.top:SetShown(button.pruiStackedVisible and
+        (not previous or priority > StackedRowPriority(previous)))
+    border.bottom:SetShown(button.pruiStackedVisible and
+        (not following or priority >= StackedRowPriority(following)))
+end
+
+local function GetStackedRowPixelSize(region)
+    local scale = region:GetEffectiveScale()
+    local pixelFactor
+    if PixelUtil and PixelUtil.GetPixelToUIUnitFactor then
+        pixelFactor = PixelUtil.GetPixelToUIUnitFactor()
+    elseif GetPhysicalScreenSize then
+        local _, physicalHeight = GetPhysicalScreenSize()
+        if physicalHeight and physicalHeight > 0 then pixelFactor = 768 / physicalHeight end
+    end
+    if not scale or scale <= 0 or not pixelFactor or pixelFactor <= 0 then return end
+    return pixelFactor / scale
+end
+
+local function RefreshStackedRowGeometry(button)
+    local pixel = GetStackedRowPixelSize(button)
+    if not pixel then return end
+    local border = button.pruiBorder
+    local left, right = button:GetLeft(), button:GetRight()
+    local top, bottom = button:GetTop(), button:GetBottom()
+    local previous = button.pruiStackedGeometry
+    if previous and previous[1] == left and previous[2] == right
+        and previous[3] == top and previous[4] == bottom and previous[5] == pixel then return end
+    button.pruiStackedGeometry = {left, right, top, bottom, pixel}
+    local function Offset(position)
+        if not position then return 0 end
+        return math.floor(position / pixel + 0.5) * pixel - position
+    end
+
+
+    left, right = Offset(left), Offset(right)
+    top, bottom = Offset(top), Offset(bottom)
+    for _, texture in pairs(border) do
+        texture:ClearAllPoints()
+        if texture.SetSnapToPixelGrid then texture:SetSnapToPixelGrid(true) end
+        if texture.SetTexelSnappingBias then texture:SetTexelSnappingBias(0) end
+    end
+    border.top:SetPoint("TOPLEFT", button, "TOPLEFT", left, top)
+    border.top:SetPoint("TOPRIGHT", button, "TOPRIGHT", right, top)
+    border.top:SetHeight(pixel)
+    border.bottom:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", left, bottom)
+    border.bottom:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", right, bottom)
+    border.bottom:SetHeight(pixel)
+    border.left:SetPoint("TOPLEFT", button, "TOPLEFT", left, top)
+    border.left:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", left, bottom)
+    border.left:SetWidth(pixel)
+    border.right:SetPoint("TOPRIGHT", button, "TOPRIGHT", right, top)
+    border.right:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", right, bottom)
+    border.right:SetWidth(pixel)
+end
+
+function PRUI.RefreshStackedRowGeometry(rows, viewport)
+    local clipTop, clipBottom
+    if viewport then
+        local pixel = GetStackedRowPixelSize(viewport) or 1
+        local top, bottom = viewport:GetTop(), viewport:GetBottom()
+        if top and bottom then clipTop, clipBottom = top + pixel, bottom - pixel end
+    end
+    for _, button in ipairs(rows or {}) do
+        if button.pruiStackedRow and button.pruiStackedVisible then
+            local top, bottom = button:GetTop(), button:GetBottom()
+
+
+            if not clipTop or not top or not bottom or (bottom <= clipTop and top >= clipBottom) then
+                RefreshStackedRowGeometry(button)
+            end
+        end
+    end
+end
+
+
+
+function PRUI.SetStackedRows(rows, visibleCount)
+    for index, button in ipairs(rows) do
+        if not button.pruiStackedRow then
+            button.pruiStackedRow = true
+            button:HookScript("OnHide", function(self)
+                self.pruiHovered, self.pruiPressed = false, false
+                PRUI.RefreshButton(self)
+            end)
+        end
+        button.pruiStackedVisible = index <= visibleCount
+        button.pruiStackedPrevious = index > 1 and index <= visibleCount and rows[index - 1] or nil
+        button.pruiStackedNext = index < visibleCount and rows[index + 1] or nil
+    end
+    for _, button in ipairs(rows) do RefreshStackedRowEdges(button) end
+    PRUI.RefreshStackedRowGeometry(rows)
 end
 
 local function SetButtonContentOffset(button, pressed)
@@ -567,6 +818,11 @@ function PRUI.RefreshButton(button)
     end
     button:SetAlpha(enabled and 1 or 0.5)
     SetButtonContentOffset(button, enabled and button.pruiPressed)
+    if button.pruiStackedRow then
+        RefreshStackedRowEdges(button)
+        RefreshStackedRowEdges(button.pruiStackedPrevious)
+        RefreshStackedRowEdges(button.pruiStackedNext)
+    end
 end
 
 function PRUI.SetButtonIdleBackgroundAlpha(button, alpha)
@@ -785,6 +1041,7 @@ local function RefreshEditBox(editBox)
     PRUI.SetFontStringColor(editBox, textColor)
     PRUI.SetBorderColor(editBox.pruiContainer, borderColor)
     editBox.pruiContainer.pruiBackground:SetAlpha(
+        editBox.pruiContainer.pruiHolidayTransparent and 0 or
         (editBox:HasFocus() or editBox.pruiInvalid)
             and 1
             or (editBox.pruiIdleBackgroundAlpha or 1))
@@ -1415,17 +1672,75 @@ function PRUI.ProgressBar(parent, options)
 end
 
 
+function ParchmentReader:IsHolidayAppearanceEnabled()
+    return ParchmentReaderDB.holidayAppearanceEnabled ~= false
+end
+
+function ParchmentReader:IsHolidayAppearanceAvailable()
+    return Theme:GetAvailableHoliday() ~= nil
+end
+
+function ParchmentReader:CanUseHolidayAppearance()
+    return self:IsHolidayAppearanceAvailable() and self:IsHolidayAppearanceEnabled()
+end
+
+
+function ParchmentReader:RefreshHolidayAppearance(frame)
+    local enabled = self:CanUseHolidayAppearance()
+    local event = Theme:GetAvailableHoliday()
+    local staleSeason = event and ParchmentReaderDB.hallowsEndActiveSeason ~= nil
+        and ParchmentReaderDB.hallowsEndActiveSeason ~= event.seasonId
+    if (not enabled or staleSeason) and ParchmentReaderDB.themeName == "HallowsEnd" then
+        self:SetTheme(Theme:GetToggleTarget(ParchmentReaderDB))
+    end
+    Theme:RefreshHolidayBackgrounds()
+    local settings = ParchmentReaderSettingsFrame
+    if settings and settings.RefreshThemeControls then settings:RefreshThemeControls() end
+    frame = frame or ParchmentReaderFrame
+    if not frame then return end
+    if not enabled and self.DismissHolidayDiscovery then self:DismissHolidayDiscovery(frame) end
+    if frame.helpButton and frame.themeButton then
+        frame.helpButton:ClearAllPoints()
+        frame.helpButton:SetPoint("RIGHT", frame.themeButton, "LEFT", -3, 0)
+    end
+    if frame.RefreshTitleAreaLayout then frame:RefreshTitleAreaLayout() end
+    if self.RefreshSeasonalDecoration then self:RefreshSeasonalDecoration(frame) end
+end
+
+function ParchmentReader:SetHolidayAppearanceEnabled(enabled)
+    ParchmentReaderDB.holidayAppearanceEnabled = enabled == true or enabled == 1
+    self:RefreshHolidayAppearance()
+end
+
 function ParchmentReader:RefreshThemeButton(frame)
     frame = frame or ParchmentReaderFrame
-    if not frame or not frame.themeButton then return end
-    local _, slot = Theme:GetToggleTarget(ParchmentReaderDB)
-    local suffix = slot == "moon" and "ThemeMoon" or "ThemeSun"
-    frame.themeButton.icon:SetTexture("Interface\\AddOns\\ParchmentReader\\Assets\\" .. suffix)
+    if not frame then return end
+    if frame.themeButton then
+        local _, slot = Theme:GetToggleTarget(ParchmentReaderDB)
+        local suffix = slot == "moon" and "ThemeMoon" or "ThemeSun"
+        frame.themeButton.icon:SetTexture("Interface\\AddOns\\ParchmentReader\\Assets\\" .. suffix)
+    end
+    if frame.hallowsEndButton then
+        PRUI.SetButtonSelected(frame.hallowsEndButton, Theme.paletteName == "HallowsEnd")
+    end
 end
 
 function ParchmentReader:SetTheme(value)
     value = Theme:NormalizeName(value)
+    if value == "HallowsEnd" and not self:CanUseHolidayAppearance() then return false end
+    if self.DismissHolidayDiscovery then self:DismissHolidayDiscovery() end
+    if value == "HallowsEnd" then
+        if ParchmentReaderDB.themeName ~= "HallowsEnd" then
+            local previous = ParchmentReaderDB.themeName
+            ParchmentReaderDB.hallowsEndReturnTheme = Theme:IsOrdinary(previous) and previous or "AzerothGlass"
+        end
+        ParchmentReaderDB.hallowsEndActiveSeason = Theme:GetAvailableHoliday().seasonId
+    else
+        ParchmentReaderDB.hallowsEndReturnTheme, ParchmentReaderDB.hallowsEndActiveSeason = nil, nil
+    end
     ParchmentReaderDB.themeName = value
+    Theme:NormalizeSeasonalState(ParchmentReaderDB)
+    value = ParchmentReaderDB.themeName
     Theme:SetPalette(value)
     local frame = ParchmentReaderFrame
     if frame then
@@ -1434,6 +1749,7 @@ function ParchmentReader:SetTheme(value)
         frame.readerBackgroundTransparent = nil
         self:RefreshReaderTransparency()
         self:RefreshThemeButton(frame)
+        if self.RefreshSeasonalDecoration then self:RefreshSeasonalDecoration(frame) end
         if self.readerLayoutMetrics and frame.contentScroll then
             self.readerLayoutMetrics.visibleChunkStart = nil
             self:RenderVisibleReaderChunks(frame.contentScroll:GetVerticalScroll())
@@ -1449,7 +1765,7 @@ function ParchmentReader:SetTheme(value)
 end
 
 function ParchmentReader:SetThemeSlot(slot, value)
-    if (slot ~= "moon" and slot ~= "sun") or not Theme.palettes[value] then return false end
+    if (slot ~= "moon" and slot ~= "sun") or not Theme:IsOrdinary(value) then return false end
     Theme:NormalizeSlots(ParchmentReaderDB)
     local key, opposite = slot .. "Theme", slot == "moon" and "sunTheme" or "moonTheme"
     if ParchmentReaderDB[opposite] == value then
@@ -1468,6 +1784,15 @@ end
 
 function ParchmentReader:ToggleTheme()
     self:SetTheme(Theme:GetToggleTarget(ParchmentReaderDB))
+end
+
+function ParchmentReader:ToggleHallowsEnd()
+    if not self:CanUseHolidayAppearance() then return false end
+    if Theme.paletteName == "HallowsEnd" then
+        self:SetTheme(Theme:GetToggleTarget(ParchmentReaderDB))
+    else
+        self:SetTheme("HallowsEnd")
+    end
 end
 
 function ParchmentReader:ResetThemes()

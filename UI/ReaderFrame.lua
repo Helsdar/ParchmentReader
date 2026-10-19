@@ -493,6 +493,7 @@ local function BuildCollectionItems()
 end
 
 local function SetCollectionRowSelected(row, selected)
+    row.pruiStackedSelected = selected
     PRUI.SetButtonSelected(row, false)
 
     local background = Theme:Get("bg", selected and "popoverAction" or "popoverRow")
@@ -513,15 +514,25 @@ local function SetCollectionRowSelected(row, selected)
     end
 end
 
+local function NormalizeCollectionOffset(value, maximumOffset)
+    if type(value) ~= "number" or value ~= value
+        or value == math.huge or value == -math.huge then
+        value = 0
+    end
+    return math.floor(Clamp(value, 0, maximumOffset))
+end
+
 local function RefreshCollectionPopover(popover)
     popover.items = BuildCollectionItems()
     local itemCount = #popover.items
     local visibleCount = math.min(itemCount, COLLECTION_ROW_POOL_SIZE)
     local maximumOffset = math.max(0, itemCount - COLLECTION_ROW_POOL_SIZE)
-    popover.offset = Clamp(popover.offset or 0, 0, maximumOffset)
+    popover.offset = NormalizeCollectionOffset(popover.offset, maximumOffset)
     popover:SetHeight(45 + visibleCount * COLLECTION_ROW_HEIGHT)
 
     for poolIndex, row in ipairs(popover.rows) do
+        row:SetPoint("TOPRIGHT", popover, "TOPRIGHT", maximumOffset > 0 and -15 or -5,
+            -(5 + (poolIndex - 1) * COLLECTION_ROW_HEIGHT))
         local item = popover.items[popover.offset + poolIndex]
         if item then
             row.item = item
@@ -537,11 +548,25 @@ local function RefreshCollectionPopover(popover)
         end
     end
 
-    if maximumOffset > 0 then
-        popover.scrollHint:Show()
-    else
-        popover.scrollHint:Hide()
+    PRUI.SetStackedRows(popover.rows, visibleCount)
+
+    local scrollbar = popover.scrollbar
+    local trackHeight = visibleCount * COLLECTION_ROW_HEIGHT
+    local thumbHeight = math.min(trackHeight,
+        math.max(24, trackHeight * visibleCount / itemCount))
+    if scrollbar.StopDragging and (scrollbar.maximumOffset ~= maximumOffset
+        or scrollbar.trackHeight ~= trackHeight or scrollbar.thumbHeight ~= thumbHeight) then
+        scrollbar.StopDragging()
     end
+    scrollbar.maximumOffset, scrollbar.trackHeight = maximumOffset, trackHeight
+    scrollbar.thumbHeight = thumbHeight
+    scrollbar.thumbTop = maximumOffset > 0
+        and (trackHeight - thumbHeight) * popover.offset / maximumOffset or 0
+    scrollbar:SetHeight(trackHeight)
+    scrollbar.thumb:SetHeight(thumbHeight)
+    scrollbar.thumb:ClearAllPoints()
+    scrollbar.thumb:SetPoint("TOP", scrollbar, "TOP", 0, -scrollbar.thumbTop)
+    scrollbar:SetShown(maximumOffset > 0)
 end
 
 local function CreateCollectionPopover(readerFrame)
@@ -549,7 +574,7 @@ local function CreateCollectionPopover(readerFrame)
         name = "ParchmentReaderCollectionPopover",
         color = Theme:Get("bg", "popover"),
         borderColor = Theme:Get("border", "elevated"),
-        shadow = true,
+        shadow = false,
     })
     popover:SetWidth(224)
     PRUI.SetAddonFrameLayer(popover, PRUI.ADDON_FRAME_LEVELS.POPOVER)
@@ -558,12 +583,9 @@ local function CreateCollectionPopover(readerFrame)
     popover:EnableMouseWheel(true)
     popover.offset = 0
     popover.rows = {}
+    popover:HookScript("OnShow", function() PRUI.RefreshStackedRowGeometry(popover.rows) end)
+    popover:HookScript("OnSizeChanged", function() PRUI.RefreshStackedRowGeometry(popover.rows) end)
     ParchmentReader:RegisterEscapeClose("ParchmentReaderCollectionPopover")
-
-    local strongShadow = Theme:Get("shadow", "strong")
-    for _, texture in pairs(popover.pruiShadow or {}) do
-        Theme:BindColor(texture, "SetColorTexture", strongShadow)
-    end
 
     local actionColor = Theme:Get("bg", "popoverAction")
 
@@ -633,16 +655,105 @@ local function CreateCollectionPopover(readerFrame)
         ShowCollectionNameDialog(nil)
     end)
 
-    popover.scrollHint = popover:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    popover.scrollHint:SetPoint("BOTTOMRIGHT", popover, "BOTTOMRIGHT", -8, 35)
-    popover.scrollHint:SetText("↕")
-    SetFontStringColor(popover.scrollHint, Theme:Get("text", "muted"))
+    local scrollbar = CreateFrame("Frame", nil, popover)
+    scrollbar:SetWidth(14)
+    scrollbar:SetPoint("TOPRIGHT", popover, "TOPRIGHT", -1, -5)
+    scrollbar:EnableMouse(true)
+    scrollbar:EnableMouseWheel(true)
+    local track = scrollbar:CreateTexture(nil, "BACKGROUND")
+    track:SetWidth(2)
+    track:SetPoint("TOP", scrollbar, "TOP", 0, 0)
+    track:SetPoint("BOTTOM", scrollbar, "BOTTOM", 0, 0)
+    Theme:BindColor(track, "SetColorTexture", Theme:Get("bg", "track"))
+    local thumb = scrollbar:CreateTexture(nil, "ARTWORK")
+    thumb:SetTexture("Interface\\Buttons\\WHITE8X8")
+    thumb:SetWidth(3)
+    Theme:BindColor(thumb, "SetVertexColor", Theme:Get("text", "muted"))
+    scrollbar.thumb = thumb
+    popover.scrollbar = scrollbar
+    local hovered, pressed = false, false
+    local dragCursorY, dragThumbTop
+    local function RefreshThumbAlpha()
 
-    popover:SetScript("OnMouseWheel", function(_, delta)
-        local maximumOffset = math.max(0, #popover.items - COLLECTION_ROW_POOL_SIZE)
-        popover.offset = Clamp(popover.offset - delta, 0, maximumOffset)
-        RefreshCollectionPopover(popover)
+        thumb:SetAlpha(pressed and 1 or hovered and 0.85 or 0.60)
+    end
+    local function StopDragging(resetHover)
+        pressed = false
+        dragCursorY, dragThumbTop = nil, nil
+        scrollbar:SetScript("OnUpdate", nil)
+        if resetHover then hovered = false end
+        RefreshThumbAlpha()
+    end
+    scrollbar.StopDragging = StopDragging
+    local function CursorY()
+        local _, physicalY = GetCursorPosition()
+        return physicalY / scrollbar:GetEffectiveScale()
+    end
+    local function MoveThumb(top)
+        local travel = scrollbar.trackHeight - scrollbar.thumbHeight
+        if travel <= 0 or scrollbar.maximumOffset <= 0 then return end
+        local offset = NormalizeCollectionOffset(
+            Clamp(top / travel, 0, 1) * scrollbar.maximumOffset + 0.5,
+            scrollbar.maximumOffset)
+        if offset ~= popover.offset then
+            popover.offset = offset
+            RefreshCollectionPopover(popover)
+        end
+    end
+    scrollbar:SetScript("OnEnter", function()
+        hovered = true
+        RefreshThumbAlpha()
     end)
+    scrollbar:SetScript("OnLeave", function()
+        hovered = false
+        RefreshThumbAlpha()
+    end)
+    scrollbar:SetScript("OnMouseDown", function(_, button)
+        if button ~= "LeftButton" then return end
+        if not scrollbar.maximumOffset or scrollbar.maximumOffset <= 0 then return end
+        local cursorY, barTop = CursorY(), scrollbar:GetTop()
+        if not barTop then return end
+        local localY = barTop - cursorY
+        if localY < scrollbar.thumbTop or localY > scrollbar.thumbTop + scrollbar.thumbHeight then
+            MoveThumb(localY - scrollbar.thumbHeight / 2)
+        end
+        if scrollbar.maximumOffset <= 0 then
+            StopDragging(true)
+            return
+        end
+
+
+        dragCursorY, dragThumbTop = cursorY, scrollbar.thumbTop
+        pressed = true
+        RefreshThumbAlpha()
+        scrollbar:SetScript("OnUpdate", function()
+            if not IsMouseButtonDown("LeftButton") then
+                StopDragging()
+                return
+            end
+            MoveThumb(dragThumbTop + dragCursorY - CursorY())
+        end)
+    end)
+    scrollbar:SetScript("OnMouseUp", function(_, button)
+        if button ~= "LeftButton" then return end
+        StopDragging()
+    end)
+    scrollbar:SetScript("OnDragStop", function()
+        StopDragging()
+    end)
+    scrollbar:SetScript("OnHide", function()
+        StopDragging(true)
+    end)
+    RefreshThumbAlpha()
+
+    local function ScrollCollections(_, delta)
+        StopDragging()
+        local maximumOffset = math.max(0, #popover.items - COLLECTION_ROW_POOL_SIZE)
+        popover.offset = NormalizeCollectionOffset(popover.offset - delta, maximumOffset)
+        RefreshCollectionPopover(popover)
+    end
+    popover:SetScript("OnMouseWheel", ScrollCollections)
+    scrollbar:SetScript("OnMouseWheel", ScrollCollections)
     ConfigureOutsideDismiss(popover, function()
         return _G.ParchmentReaderCollectionContextMenu
     end)
@@ -652,6 +763,7 @@ local function CreateCollectionPopover(readerFrame)
             readerFrame.collectionSelector.chevron, true)
     end)
     popover:HookScript("OnHide", function()
+        StopDragging(true)
         PRUI.SetButtonSelected(readerFrame.collectionSelector, false)
         SetCollectionChevronExpanded(
             readerFrame.collectionSelector.chevron, false)
@@ -1873,6 +1985,13 @@ function ParchmentReader:SetReaderKeyboardNavigationEnabled(enabled)
     end
 end
 
+local function SetSeasonalSurfaceAlpha(surface, alpha)
+    surface.pruiSeasonalAlpha = alpha
+    for _, texture in ipairs(surface.pruiSeasonalTextures or {}) do
+        texture:SetAlpha(texture.pruiSeasonalOpacity * alpha)
+    end
+end
+
 local function SetReaderSurfaceTransparency(surface, transparent, customAmount)
     if not surface then return end
 
@@ -1897,6 +2016,7 @@ local function SetReaderSurfaceTransparency(surface, transparent, customAmount)
         surface.pruiBackground:SetAlpha(shellHidden and 0 or backgroundAlpha)
     end
     PRUI.SetPaperSurfaceAlpha(surface, backgroundAlpha)
+    SetSeasonalSurfaceAlpha(surface, backgroundAlpha)
     for _, texture in ipairs(surface.pruiPaperEdges or {}) do
         texture:SetAlpha(backgroundAlpha)
     end
@@ -1907,6 +2027,247 @@ local function SetReaderSurfaceTransparency(surface, transparent, customAmount)
             texture:SetAlpha(shadowAlpha)
         end
     end
+end
+
+
+
+local SEASONAL_PAGE_OPACITY = 0.22
+local SEASONAL_PAGE_ASPECT = 2
+
+local function RefreshSeasonalSurface(surface, active)
+    if not surface then return end
+    if active and not surface.pruiSeasonalPage then
+        local illustration = surface:CreateTexture(nil, "BACKGROUND", nil, -5)
+        illustration:SetTexture("Interface\\AddOns\\ParchmentReader\\Assets\\HallowsEndBackdropBC1")
+        illustration:SetVertexColor(1, 1, 1, 1)
+        illustration:SetPoint("TOPLEFT", surface, "TOPLEFT", 2, -2)
+        illustration:SetPoint("BOTTOMRIGHT", surface, "BOTTOMRIGHT", -2, 2)
+        illustration.pruiSeasonalOpacity = SEASONAL_PAGE_OPACITY
+        surface.pruiSeasonalPage = illustration
+        surface.pruiSeasonalTextures = {illustration}
+        surface:HookScript("OnSizeChanged", function()
+            RefreshSeasonalSurface(surface, Theme.paletteName == "HallowsEnd")
+        end)
+    end
+    local illustration = surface.pruiSeasonalPage
+    if not illustration then return end
+    local width, height = math.max(0, (surface:GetWidth() or 0) - 4),
+        math.max(0, (surface:GetHeight() or 0) - 4)
+    if width > 0 and height > 0 then
+
+
+        local aspect = width / height
+        if aspect < SEASONAL_PAGE_ASPECT then
+            illustration:SetTexCoord(1 - aspect / SEASONAL_PAGE_ASPECT, 1, 0, 1)
+        else
+            local fraction = SEASONAL_PAGE_ASPECT / aspect
+            illustration:SetTexCoord(0, 1, (1 - fraction) / 2, (1 + fraction) / 2)
+        end
+    end
+    illustration:SetShown(active and width > 0 and height > 0)
+    SetSeasonalSurfaceAlpha(surface, surface.pruiSeasonalAlpha or 1)
+end
+
+function ParchmentReader:RefreshSeasonalDecoration(frame)
+    frame = frame or ParchmentReaderFrame
+    if not frame then return end
+    local available = self:CanUseHolidayAppearance()
+    local active = Theme.paletteName == "HallowsEnd" and available
+    RefreshSeasonalSurface(frame.contentSurface, active)
+    local icon = frame.brandIcon
+    if icon then
+        icon:SetTexture(available and "Interface\\AddOns\\ParchmentReader\\Assets\\ThemePumpkin"
+            or "Interface\\Icons\\INV_Misc_Book_09")
+        icon:SetSize(available and 20 or 14, available and 20 or 14)
+        if available then icon:SetTexCoord(0, 1, 0, 1)
+        else icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+    end
+    local button = frame.hallowsEndButton
+    if button then
+
+
+        button:EnableMouse(available)
+        if not available then
+            button.pruiHovered, button.pruiPressed = false, false
+            button.pruiTooltipGeneration = (button.pruiTooltipGeneration or 0) + 1
+            if GameTooltip:IsOwned(button) then GameTooltip:Hide() end
+        end
+        PRUI.SetButtonSelected(button, active)
+        for _, border in pairs(button.pruiBorder or {}) do border:SetShown(active) end
+    end
+end
+
+function ParchmentReader:DismissHolidayDiscovery(frame)
+    frame = frame or ParchmentReaderFrame
+    if frame and frame.holidayDiscoveryHint then frame.holidayDiscoveryHint:Hide() end
+end
+
+
+
+local HOLIDAY_DISCOVERY_COLORS = {
+    background = {24 / 255, 36 / 255, 30 / 255, 1},
+    border = {158 / 255, 115 / 255, 72 / 255, 1},
+    title = {244 / 255, 210 / 255, 154 / 255, 1},
+    ink = {222 / 255, 216 / 255, 195 / 255, 1},
+    button = {87 / 255, 63 / 255, 39 / 255, 1},
+    buttonInk = {1, 240 / 255, 206 / 255, 1},
+    clear = {0, 0, 0, 0},
+    hover = {244 / 255, 210 / 255, 154 / 255, 0.10},
+    pressed = {244 / 255, 210 / 255, 154 / 255, 0.18},
+}
+
+local function MeasureHolidayDiscoveryText(text, fallback)
+    local height = text:GetStringHeight()
+    if type(height) == "number" and height > 0 and height < math.huge then return height end
+    return fallback
+end
+
+local function LayoutHolidayDiscovery(frame)
+    local hint = frame.holidayDiscoveryHint
+    if not hint then return false end
+    local frameWidth, frameHeight = frame:GetWidth(), frame:GetHeight()
+    if not frameWidth or not frameHeight or frameWidth <= 34 or frameHeight <= 0 then
+        hint:Hide()
+        return false
+    end
+    local width = math.min(284, frameWidth - 10)
+    hint:SetWidth(width)
+    hint.title:SetWidth(math.max(1, width - 86))
+    hint.title:SetHeight(0)
+    local titleHeight = math.max(14, MeasureHolidayDiscoveryText(hint.title, 14))
+    local headerHeight = math.max(32, titleHeight)
+    hint.title:SetHeight(titleHeight)
+    hint.label:SetWidth(math.max(1, width - 24))
+    hint.label:SetHeight(0)
+    local bodyHeight = MeasureHolidayDiscoveryText(hint.label, 36)
+    hint.label:SetHeight(bodyHeight)
+    local padding, bodyGap, actionGap = 12, 6, 10
+    local maxHeight = frameHeight - Theme.metrics.topbarHeight - 6
+    local height = padding * 2 + headerHeight + bodyGap + bodyHeight + actionGap + 24
+    if height > maxHeight then
+        padding, bodyGap, actionGap = 8, 4, 6
+        height = padding * 2 + headerHeight + bodyGap + bodyHeight + actionGap + 24
+    end
+    hint.title:ClearAllPoints()
+    hint.title:SetPoint("TOPLEFT", hint, "TOPLEFT", 52, -padding - (headerHeight - titleHeight) / 2)
+    hint.icon:ClearAllPoints()
+    hint.icon:SetPoint("TOPLEFT", hint, "TOPLEFT", 12, -padding)
+    local bodyY = padding + headerHeight + bodyGap
+    hint.label:ClearAllPoints()
+    hint.label:SetPoint("TOPLEFT", hint, "TOPLEFT", 12, -bodyY)
+    local actionY = bodyY + bodyHeight + actionGap
+    hint.actionButton:SetSize(width - 24, 24)
+    hint.actionButton:ClearAllPoints()
+    hint.actionButton:SetPoint("TOPLEFT", hint, "TOPLEFT", 12, -actionY)
+    hint:SetHeight(height)
+    return true
+end
+
+local function StyleHolidayDiscoveryButton(button, background, ink)
+    button.pruiTextColor, button.pruiSelectedTextColor = ink, ink
+    button.pruiBorderColor = HOLIDAY_DISCOVERY_COLORS.border
+    button.pruiHoverBorderColor = HOLIDAY_DISCOVERY_COLORS.title
+    button.pruiSelectedBorderColor = HOLIDAY_DISCOVERY_COLORS.title
+    Theme:BindColor(button.pruiBackground, "SetColorTexture", background)
+    PRUI.RefreshButton(button)
+    local function RefreshSeasonalInk()
+
+
+
+        local state = HOLIDAY_DISCOVERY_COLORS.clear
+        if button:IsEnabled() then
+            if button.pruiPressed then state = HOLIDAY_DISCOVERY_COLORS.pressed
+            elseif button.pruiHovered then state = HOLIDAY_DISCOVERY_COLORS.hover end
+        end
+        Theme:BindColor(button.pruiState, "SetColorTexture", state)
+        Theme:BindColor(button.label, "SetTextColor", ink)
+    end
+    for _, event in ipairs({"OnEnter", "OnLeave", "OnMouseDown", "OnMouseUp", "OnEnable", "OnDisable"}) do
+        button:HookScript(event, RefreshSeasonalInk)
+    end
+    button:HookScript("OnHide", function()
+        button.pruiHovered, button.pruiPressed = false, false
+        PRUI.RefreshButton(button)
+        RefreshSeasonalInk()
+    end)
+    RefreshSeasonalInk()
+end
+
+local function ShowHolidayDiscovery(reader, frame, preview)
+    frame = frame or ParchmentReaderFrame
+    local event = Theme:GetAvailableHoliday()
+    if not frame or not frame.pruiReaderOpened or not frame:IsVisible() or not event
+        or not reader:IsHolidayAppearanceEnabled() or Theme.paletteName == "HallowsEnd"
+        or (not preview and ParchmentReaderDB.holidayAppearanceSeenSeason == event.seasonId) then return end
+    local hint = frame.holidayDiscoveryHint
+    if not hint then
+
+
+        local colors = HOLIDAY_DISCOVERY_COLORS
+        hint = PRUI.Panel(frame, {color = colors.background, borderColor = colors.border})
+        hint:SetPoint("TOPLEFT", frame.hallowsEndButton, "BOTTOMLEFT", 0, -6)
+        hint:SetFrameLevel(frame:GetFrameLevel() + 20)
+        hint:EnableMouse(false)
+        local icon = hint:CreateTexture(nil, "ARTWORK")
+        icon:SetTexture("Interface\\AddOns\\ParchmentReader\\Assets\\ThemePumpkin")
+        icon:SetSize(32, 32)
+        icon:SetPoint("TOPLEFT", hint, "TOPLEFT", 12, -12)
+        hint.icon = icon
+        local title = hint:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        title:SetJustifyH("LEFT")
+        title:SetWordWrap(true)
+        title:SetText(L["Hallow's End"])
+        SetFontStringColor(title, colors.title)
+        hint.title = title
+        local text = hint:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        text:SetJustifyH("LEFT")
+        text:SetWordWrap(true)
+        text:SetText(L["Give your books a touch of autumn magic. Use the pumpkin to switch back."])
+        SetFontStringColor(text, colors.ink)
+        hint.label = text
+        local action = PRUI.Button(hint, L["Try appearance"], {height = 24})
+        action:EnableMouse(true)
+        StyleHolidayDiscoveryButton(action, colors.button, colors.buttonInk)
+        action:SetScript("OnClick", function()
+            if hint:IsShown() and frame:IsVisible() and reader:CanUseHolidayAppearance()
+                and Theme.paletteName ~= "HallowsEnd" then
+                reader:ToggleHallowsEnd()
+            end
+        end)
+        hint.actionButton = action
+        local close = PRUI.IconButton(hint, nil, L["Close"], {width = 24, height = 24,
+            iconText = "×", fontObject = "GameFontNormal"})
+        close:SetPoint("TOPRIGHT", hint, "TOPRIGHT", -4, -4)
+        close:EnableMouse(true)
+        StyleHolidayDiscoveryButton(close, colors.background, colors.ink)
+        close:SetScript("OnClick", function() hint:Hide() end)
+        hint.closeButton = close
+        frame.holidayDiscoveryHint = hint
+        frame:HookScript("OnSizeChanged", LayoutHolidayDiscovery)
+    end
+    if not LayoutHolidayDiscovery(frame) then return end
+    hint:Show()
+
+
+    if not preview then ParchmentReaderDB.holidayAppearanceSeenSeason = event.seasonId end
+end
+
+function ParchmentReader:ShowHolidayDiscovery(frame)
+    ShowHolidayDiscovery(self, frame, false)
+end
+
+
+
+function ParchmentReader:PreviewHolidayDiscovery()
+    ShowHolidayDiscovery(self, ParchmentReaderFrame, true)
+end
+
+function ParchmentReader:InitializeHolidayDiscovery(frame)
+    frame:HookScript("OnShow", function()
+        ParchmentReader:RefreshHolidayAppearance(frame)
+        ParchmentReader:ShowHolidayDiscovery(frame)
+    end)
+    frame:HookScript("OnHide", function() ParchmentReader:DismissHolidayDiscovery(frame) end)
 end
 
 local function CompareNormalizedBookTitles(
@@ -2144,6 +2505,15 @@ local function ClampReaderPosition(frame, x, y)
         Clamp(y, -verticalLimit, verticalLimit)
 end
 
+function ParchmentReader:RefreshListRowBorders()
+    local frame = ParchmentReaderFrame
+    if not frame then return end
+    PRUI.RefreshStackedRowGeometry(frame.bookButtons)
+    if frame.collectionPopover then
+        PRUI.RefreshStackedRowGeometry(frame.collectionPopover.rows)
+    end
+end
+
 function ParchmentReader:ApplyReaderPosition()
     local frame = ParchmentReaderFrame
     if not frame then return end
@@ -2158,6 +2528,7 @@ function ParchmentReader:ApplyReaderPosition()
 
     frame:ClearAllPoints()
     frame:SetPoint("CENTER", UIParent, "CENTER", x, y)
+    self:RefreshListRowBorders()
 end
 
 function ParchmentReader:SaveReaderPosition()
@@ -2456,17 +2827,27 @@ function ParchmentReader:CreateReaderFrame()
         ParchmentReader:SaveReaderPosition()
     end)
 
-    local brandSlot = CreateFrame("Frame", nil, topbar)
-    brandSlot:SetSize(20, 24)
+    local brandSlot = PRUI.IconButton(topbar,
+        "Interface\\Icons\\INV_Misc_Book_09", nil,
+        {width = 24, height = 24, iconSize = 14, iconRole = "artwork",
+            texCoord = {0.08, 0.92, 0.08, 0.92}})
     brandSlot:SetPoint("LEFT", topbar, "LEFT", 4, 0)
 
-    local brandIcon = brandSlot:CreateTexture(nil, "ARTWORK")
-    brandIcon:SetSize(14, 14)
-    brandIcon:SetPoint("CENTER")
-    brandIcon:SetTexture("Interface\\Icons\\INV_Misc_Book_09")
-    brandIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    local gold = Theme:Get("accent", "gold")
-    Theme:BindIconColor(brandIcon, gold, "artwork")
+
+
+    brandSlot.pruiBackground:Hide()
+    for _, border in pairs(brandSlot.pruiBorder) do border:Hide() end
+    brandSlot:SetScript("OnClick", function()
+        ParchmentReader:ToggleHallowsEnd()
+    end)
+    PRUI.AttachTooltip(brandSlot, function()
+        if not ParchmentReader:CanUseHolidayAppearance() then return end
+        return L["Hallow's End"] .. "\n" .. L[Theme.paletteName == "HallowsEnd"
+            and "Return to previous theme" or "Enable holiday appearance"]
+    end, {wrapText = true})
+    frame.brandIcon = brandSlot.icon
+    frame.hallowsEndButton = brandSlot
+    ParchmentReader:RefreshSeasonalDecoration(frame)
 
     local addonLabel = topbar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     addonLabel:SetPoint("LEFT", brandSlot, "RIGHT", 3, 0)
@@ -2541,8 +2922,12 @@ function ParchmentReader:CreateReaderFrame()
     themeButton:SetScript("OnClick", function()
         ParchmentReader:ToggleTheme()
     end)
-    PRUI.AttachTooltip(themeButton, L["Toggle theme"])
+    PRUI.AttachTooltip(themeButton, function()
+        return L[Theme.paletteName == "HallowsEnd" and "Return to previous theme" or "Toggle theme"]
+    end)
     frame.themeButton = themeButton
+
+    ParchmentReader:InitializeHolidayDiscovery(frame)
     ParchmentReader:RefreshThemeButton(frame)
 
     local helpButton = PRUI.IconButton(topbar, nil, L["Keyboard Help"], {
@@ -2948,6 +3333,12 @@ function ParchmentReader:CreateReaderFrame()
     emptyState:Hide()
     frame.bookListEmptyState = emptyState
 
+    sidebarScroll:SetScript("OnVerticalScroll", function()
+        PRUI.RefreshStackedRowGeometry(frame.bookButtons, sidebarScroll)
+    end)
+    bookListScroll:HookScript("OnShow", function()
+        PRUI.RefreshStackedRowGeometry(frame.bookButtons)
+    end)
     sidebarScroll:SetScript("OnMouseWheel", function(_, delta)
         local current = sidebarScroll:GetVerticalScroll() or 0
         sidebarScroll:SetVerticalScroll(current - delta * 52)
@@ -2955,6 +3346,7 @@ function ParchmentReader:CreateReaderFrame()
     end)
     sidebarScroll:SetScript("OnSizeChanged", function(_, scrollWidth)
         bookListScroll:SetWidth(math.max(1, scrollWidth))
+        PRUI.RefreshStackedRowGeometry(frame.bookButtons)
         if emptyState:IsShown() then emptyState:RefreshLayout() end
         ClampBookListScroll(frame)
     end)
@@ -3216,6 +3608,7 @@ function ParchmentReader:CreateReaderFrame()
         minimizeButton,
         settingsButton,
         themeButton,
+        brandSlot,
         helpButton,
         collectionSelector,
         libraryViewButtons.all,
@@ -3245,6 +3638,7 @@ function ParchmentReader:CreateReaderFrame()
             "RIGHT",
             compact and 3 or 7,
             0)
+        ParchmentReader:RefreshSeasonalDecoration(self)
     end
 
     function frame:RefreshTitleAreaLayout()
@@ -3510,6 +3904,8 @@ function ParchmentReader:RefreshBookList()
             visibleIndex = visibleIndex + 1
         end
     end
+
+    PRUI.SetStackedRows(frame.bookButtons, visibleIndex - 1)
 
     local contentHeight = math.max(1, (visibleIndex - 1) * buttonHeight)
     frame.bookListScroll:SetHeight(contentHeight)

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.0 — 2026-10-19
+
+- Added Hallow's End appearance across the reader, editor, Quick Note, and settings.
+- Added a pumpkin control that switches seasonal appearance on and returns to the previous ordinary theme, with availability managed in Appearance settings.
+- Added a localized seasonal invitation.
+- Reduced background texture download size while retaining the accepted artwork.
+- Improved collection-list scrollbar dragging and row separators, and removed the collection popover's overlapping shadow.
+
+Existing books, bookmarks, reading progress, and ordinary theme choices are preserved.
+
 ## 2.0.4 — 2026-10-18
 
 - Bookmarks are ordered by reading position, and reopening the list reveals the selected bookmark.

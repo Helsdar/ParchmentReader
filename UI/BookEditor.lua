@@ -333,6 +333,9 @@ function ParchmentReader:CreateBookEditorFrame()
     contentSurface:SetPoint("TOPLEFT", contentLabel, "BOTTOMLEFT", 0, -6)
     contentSurface:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -16, 56)
     PRUI.ApplyPaperSurface(contentSurface)
+    PRUI.ApplyHolidayBackground(frame, "HallowsEndQuickNoteBC1", 2, 0.20, {
+        inset = 1, alignY = 0, surfaces = {contentSurface},
+    })
     frame.contentSurface = contentSurface
 
     local scrollFrame = CreateFrame(

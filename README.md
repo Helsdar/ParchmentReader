@@ -38,6 +38,11 @@ resizable window.
   Transparent until hovered to keep reading comfortable.
 - Choose Azeroth Glass, Light Parchment, or Warm Parchment, and assign the
   sun/moon theme switch independently. Themes update open windows immediately.
+- Choose Hallow's End appearance across the reader, editor, Quick
+  Note, and settings. A pumpkin control returns to the previous ordinary theme;
+  Holiday appearance in Settings controls availability.
+- Discover seasonal appearance through a localized invitation, with improved
+  collection scrollbar dragging and clearer list-row separators.
 - Find settings in Reading, Appearance, Controls, and General, with a live font
   sample and theme previews.
 - Choose the interface language independently of the WoW client: English,
@@ -69,11 +74,10 @@ client checks for this bounded change were waived by the owner.
 
 ## Downloads
 
-Version **2.0.4** improves bookmark navigation. Bookmarks are ordered by reading
-position, reopening the list reveals the selected bookmark, and repeated
-**+ Here** clicks at the same exact point reuse the existing bookmark. Older
-duplicate bookmarks remain independently usable, and hover excerpts are shorter
-with continuation ellipses. Existing records, names, and saved data are preserved.
+Release **2.1.0** adds Hallow's End appearance, seasonal controls and an
+invitation, smaller background texture downloads, and collection-list
+refinements. Existing books, bookmarks, reading progress, and ordinary theme
+choices are preserved.
 
 - [CurseForge](https://www.curseforge.com/wow/addons/parchment-reader)
 - [Wago Addons](https://addons.wago.io/addons/parchment-reader)
@@ -122,6 +126,11 @@ manifest.
 - Open **Keyboard Help** in the reader or editor to see available shortcuts.
 - In Appearance, choose **Custom — adjust transparency** to show the slider
   and **Transparent until hovered** option.
+- Use the pumpkin to try Hallow's End and return
+  to your previous ordinary theme. Settings > Appearance > Holiday appearance
+  controls whether seasonal appearance is available without selecting it.
+  Availability is supplied by the addon release; it does not follow the calendar.
+  A seasonal invitation appears once per season when you explicitly open Reader.
 
 ## Commands
 
@@ -142,6 +151,9 @@ Version 2.0.3 updates compatibility and package-version metadata only;
 books, bookmarks, reading progress, settings, and their saved format are unchanged.
 Version 2.0.4 improves bookmark navigation and hover excerpts while preserving
 existing bookmark records, names, and saved data format.
+Version 2.1.0 preserves books, bookmarks, reading progress, and
+ordinary theme choices. Seasonal preferences and invitation seen state persist
+between sessions; reinstalling does not reset the invitation.
 
 ## License
 

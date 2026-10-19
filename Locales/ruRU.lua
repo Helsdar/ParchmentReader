@@ -1,4 +1,12 @@
 ParchmentReader:RegisterLocale("ruRU", {
+    ["Hallow's End appearance is available"] = "Доступно оформление Тыквовина",
+    ["Give your books a touch of autumn magic. Use the pumpkin to switch back."] = "Добавьте книгам осенней магии. Тыква вернёт привычное оформление.",
+    ["Try appearance"] = "Примерить оформление",
+    ["Enable holiday appearance"] = "Включить праздничное оформление",
+    ["Holiday appearance"] = "Праздничное оформление",
+    ["Show holiday theme buttons in the reader. Disabling restores your previous ordinary theme."] = "Показывать кнопки праздничных тем в окне чтения. При отключении восстанавливается предыдущая обычная тема.",
+    ["Hallow's End"] = "Тыквовин",
+    ["Return to previous theme"] = "Вернуться к предыдущей теме",
     ["Reading"] = "Чтение",
     ["Appearance"] = "Оформление",
     ["Controls"] = "Управление",
