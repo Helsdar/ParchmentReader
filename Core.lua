@@ -70,6 +70,7 @@ local DEFAULTS = {
     readerKeyboardNavigation = true,
     interfaceLanguage = "auto",
     themeName = "AzerothGlass",
+    holidayAppearanceEnabled = true,
     moonTheme = "AzerothGlass",
     sunTheme = "LightParchment",
 }
@@ -617,7 +618,7 @@ function ParchmentReader:ToggleReader()
     end
 end
 
-function ParchmentReader:ShowReader()
+function ParchmentReader:ShowReader(suppressDiscovery)
     self.readerMinimized = false
     ParchmentReaderDB.readerMinimized = false
     if self.HideFloatingLauncher then
@@ -627,6 +628,8 @@ function ParchmentReader:ShowReader()
     if not ParchmentReaderFrame then
         self:CreateReaderFrame()
     end
+
+    ParchmentReaderFrame.pruiReaderOpened = not suppressDiscovery
     ParchmentReaderFrame:Show()
     self:UpdateReader()
 end
@@ -844,6 +847,7 @@ function ParchmentReader:ApplySidebarState(collapsed)
     if frame.RefreshTopbarIdentityLayout then
         frame:RefreshTopbarIdentityLayout(ParchmentReaderDB.sidebarCollapsed)
     end
+    self:RefreshHolidayAppearance(frame)
     local preferredWidth, preferredHeight
     if wasCollapsed ~= ParchmentReaderDB.sidebarCollapsed then
         preferredWidth, preferredHeight = self:GetSavedReaderSize(
@@ -1279,6 +1283,7 @@ _boot:SetScript("OnEvent", function(self, event, addonName)
         ParchmentReaderDB = ParchmentReaderDB or {}
         ApplyDefaults(ParchmentReaderDB)
         ParchmentReader.Theme:NormalizeSlots(ParchmentReaderDB)
+        ParchmentReader.Theme:NormalizeSeasonalState(ParchmentReaderDB)
         ParchmentReaderDB.themeName =
             ParchmentReader.Theme:SetPalette(ParchmentReaderDB.themeName)
         ParchmentReaderDB.interfaceLanguage =
@@ -1357,7 +1362,8 @@ _boot:SetScript("OnEvent", function(self, event, addonName)
         then
             ParchmentReader:ShowFloatingLauncher()
         elseif ParchmentReader:IsReaderPinned() then
-            ParchmentReader:ShowReader()
+
+            ParchmentReader:ShowReader(true)
         end
 
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")

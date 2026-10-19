@@ -1,4 +1,12 @@
 ParchmentReader:RegisterLocale("deDE", {
+    ["Hallow's End appearance is available"] = "Das Schlotternächte-Design ist verfügbar",
+    ["Give your books a touch of autumn magic. Use the pumpkin to switch back."] = "Ein Hauch Herbstmagie für eure Bücher. Mit dem Kürbis wechselt ihr zurück.",
+    ["Try appearance"] = "Design ausprobieren",
+    ["Enable holiday appearance"] = "Festtagsgestaltung aktivieren",
+    ["Holiday appearance"] = "Festtagsgestaltung",
+    ["Show holiday theme buttons in the reader. Disabling restores your previous ordinary theme."] = "Schaltflächen für Festtagsthemen im Lesefenster anzeigen. Beim Deaktivieren wird das vorherige normale Design wiederhergestellt.",
+    ["Hallow's End"] = "Schlotternächte",
+    ["Return to previous theme"] = "Zum vorherigen Design zurückkehren",
     ["Reading"] = "Lesen",
     ["Appearance"] = "Aussehen",
     ["Controls"] = "Steuerung",

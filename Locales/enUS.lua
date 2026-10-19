@@ -1,6 +1,14 @@
 
 
 ParchmentReader:RegisterLocale("enUS", {
+    ["Hallow's End appearance is available"] = "Hallow's End appearance is available",
+    ["Give your books a touch of autumn magic. Use the pumpkin to switch back."] = "Give your books a touch of autumn magic. Use the pumpkin to switch back.",
+    ["Try appearance"] = "Try appearance",
+    ["Enable holiday appearance"] = "Enable holiday appearance",
+    ["Holiday appearance"] = "Holiday appearance",
+    ["Show holiday theme buttons in the reader. Disabling restores your previous ordinary theme."] = "Show holiday theme buttons in the reader. Disabling restores your previous ordinary theme.",
+    ["Hallow's End"] = "Hallow's End",
+    ["Return to previous theme"] = "Return to previous theme",
     ["Reading"] = "Reading",
     ["Appearance"] = "Appearance",
     ["Controls"] = "Controls",

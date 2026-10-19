@@ -1,4 +1,12 @@
 ParchmentReader:RegisterLocale("esES", {
+    ["Hallow's End appearance is available"] = "La apariencia de Halloween está disponible",
+    ["Give your books a touch of autumn magic. Use the pumpkin to switch back."] = "Un toque de magia otoñal para tus libros. La calabaza restaura el tema anterior.",
+    ["Try appearance"] = "Probar apariencia",
+    ["Enable holiday appearance"] = "Activar la apariencia festiva",
+    ["Holiday appearance"] = "Apariencia festiva",
+    ["Show holiday theme buttons in the reader. Disabling restores your previous ordinary theme."] = "Mostrar botones de temas festivos en el lector. Al desactivar esta opción se restaura el tema normal anterior.",
+    ["Hallow's End"] = "Halloween",
+    ["Return to previous theme"] = "Volver al tema anterior",
     ["Reading"] = "Lectura",
     ["Appearance"] = "Apariencia",
     ["Controls"] = "Controles",

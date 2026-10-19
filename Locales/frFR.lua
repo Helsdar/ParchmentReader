@@ -1,4 +1,12 @@
 ParchmentReader:RegisterLocale("frFR", {
+    ["Hallow's End appearance is available"] = "L’apparence de la Sanssaint est disponible",
+    ["Give your books a touch of autumn magic. Use the pumpkin to switch back."] = "Un peu de magie automnale pour vos livres. La citrouille rétablit le thème précédent.",
+    ["Try appearance"] = "Essayer l’apparence",
+    ["Enable holiday appearance"] = "Activer l’apparence festive",
+    ["Holiday appearance"] = "Apparence festive",
+    ["Show holiday theme buttons in the reader. Disabling restores your previous ordinary theme."] = "Afficher les boutons de thèmes de fête dans le lecteur. Désactiver cette option rétablit le thème ordinaire précédent.",
+    ["Hallow's End"] = "Sanssaint",
+    ["Return to previous theme"] = "Revenir au thème précédent",
     ["Reading"] = "Lecture",
     ["Appearance"] = "Apparence",
     ["Controls"] = "Commandes",

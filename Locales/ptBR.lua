@@ -1,4 +1,12 @@
 ParchmentReader:RegisterLocale("ptBR", {
+    ["Hallow's End appearance is available"] = "A aparência da Noturnália está disponível",
+    ["Give your books a touch of autumn magic. Use the pumpkin to switch back."] = "Um toque de magia de outono nos seus livros. A abóbora restaura o tema anterior.",
+    ["Try appearance"] = "Experimentar aparência",
+    ["Enable holiday appearance"] = "Ativar aparência festiva",
+    ["Holiday appearance"] = "Aparência festiva",
+    ["Show holiday theme buttons in the reader. Disabling restores your previous ordinary theme."] = "Mostrar botões de temas festivos no leitor. Desativar restaura o tema comum anterior.",
+    ["Hallow's End"] = "Noturnália",
+    ["Return to previous theme"] = "Voltar ao tema anterior",
     ["Reading"] = "Leitura",
     ["Appearance"] = "Aparência",
     ["Controls"] = "Controles",

@@ -239,6 +239,9 @@ function ParchmentReader:CreateSettingsFrame()
     footer:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 1)
     footer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, 1)
     footer:SetHeight(44)
+    PRUI.ApplyHolidayBackground(frame, "HallowsEndSettingsBC1", 1, 0.16, {
+        inset = 1, alignY = 0.70, surfaces = {navigation, footer},
+    })
 
     local function Text(parent, text, x, y, width, role, font)
         local label = parent:CreateFontString(nil, "OVERLAY", font or "GameFontNormalSmall")
@@ -386,7 +389,7 @@ function ParchmentReader:CreateSettingsFrame()
 
 
 
-    Text(appearance, L["Current theme"], 0, 56)
+    frame.currentThemeLabel = Text(appearance, L["Current theme"], 0, 56)
     frame.themeCards, frame.themeSlotDropdowns = {}, {}
     local themeItems = {}
     for index, themeName in ipairs(Theme.order) do
@@ -432,6 +435,11 @@ function ParchmentReader:CreateSettingsFrame()
         frame.themeSlotDropdowns[slot] = dropdown
     end
     function frame:RefreshThemeControls()
+        self.holidayAppearanceCheck:SetShown(ParchmentReader:IsHolidayAppearanceAvailable())
+        self.holidayAppearanceCheck:SetChecked(ParchmentReader:IsHolidayAppearanceEnabled())
+        PRUI.RefreshCheckbox(self.holidayAppearanceCheck)
+        self.currentThemeLabel:SetText(L["Current theme"]
+            .. (Theme.paletteName == "HallowsEnd" and ": " .. L["Hallow's End"] or ""))
         for themeName, card in pairs(self.themeCards) do
             PRUI.SetButtonSelected(card, themeName == Theme:NormalizeName(ParchmentReaderDB.themeName))
         end
@@ -439,7 +447,14 @@ function ParchmentReader:CreateSettingsFrame()
         self.themeSlotDropdowns.moon:SetValue(moon, true)
         self.themeSlotDropdowns.sun:SetValue(sun, true)
     end
-    Text(appearance, L["Quick theme switching in the reader."], 0, 220, nil, "muted")
+    local holidayAppearanceCheck = PRUI.Checkbox(appearance, L["Holiday appearance"], {
+        name = "ParchmentReaderHolidayAppearanceCheck", width = 456})
+    holidayAppearanceCheck:SetPoint("TOPLEFT", appearance, "TOPLEFT", 0, -220)
+    PRUI.AttachTooltip(holidayAppearanceCheck, L["Show holiday theme buttons in the reader. Disabling restores your previous ordinary theme."])
+    holidayAppearanceCheck:HookScript("OnClick", function(self)
+        ParchmentReader:SetHolidayAppearanceEnabled(PRUI.IsCheckboxChecked(self))
+    end)
+    frame.holidayAppearanceCheck = holidayAppearanceCheck
     Text(appearance, L["Reader transparency:"], 0, 260)
     local transparencyHint, customTransparencyControls, combatTransparencyCheck
     local transparencyDropdown = PRUI.Dropdown(appearance, {
@@ -715,6 +730,7 @@ function ParchmentReader:CreateSettingsFrame()
             local reloadForLanguage = ParchmentReader.locale
                 ~= ParchmentReader:ResolveInterfaceLocale("auto")
             ParchmentReaderDB.interfaceLanguage = "auto"
+            ParchmentReader:SetHolidayAppearanceEnabled(true)
             ParchmentReader:ResetThemes()
             ParchmentReader:HideFloatingLauncher()
             ParchmentReader:ResetFloatingLauncherSettings()
