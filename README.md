@@ -74,10 +74,11 @@ client checks for this bounded change were waived by the owner.
 
 ## Downloads
 
-Release **2.1.0** adds Hallow's End appearance, seasonal controls and an
-invitation, smaller background texture downloads, and collection-list
-refinements. Existing books, bookmarks, reading progress, and ordinary theme
-choices are preserved.
+Release **2.1.1** recovers unsaved Add/Edit Book and Quick Note drafts after
+ordinary reloads or logouts, with a title/date offer to restore or delete each
+draft. It also fixes outside-click keyboard focus release in both editors.
+Existing books, collections, bookmarks, reading progress, and settings are
+preserved.
 
 - [CurseForge](https://www.curseforge.com/wow/addons/parchment-reader)
 - [Wago Addons](https://addons.wago.io/addons/parchment-reader)

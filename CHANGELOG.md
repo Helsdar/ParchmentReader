@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.1.1 — unreleased
+## 2.1.1 — 2026-10-26
 
 - Recover unsaved Add/Edit Book and Quick Note drafts after ordinary reloads or logouts, with one shared draft per editor.
 - See the draft title and date when reopening its editor, then choose **Restore** or **Delete Draft**. Escape keeps the draft for later without opening the requested editor.
