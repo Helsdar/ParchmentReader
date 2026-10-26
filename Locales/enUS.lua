@@ -1,6 +1,12 @@
 
 
 ParchmentReader:RegisterLocale("enUS", {
+    ["Recover the unsaved draft from %s?"] = "Recover the unsaved draft from %s?",
+    ["Restore"] = "Restore",
+    ["Delete Draft"] = "Delete Draft",
+    ["Recovered Book"] = "Recovered Book",
+    ["The original book changed or was deleted. Restore will create a separate copy."] = "The original book changed or was deleted. Restore will create a separate copy.",
+    ["This book is already open in another editor. Close it before restoring this draft."] = "This book is already open in another editor. Close it before restoring this draft.",
     ["Hallow's End appearance is available"] = "Hallow's End appearance is available",
     ["Give your books a touch of autumn magic. Use the pumpkin to switch back."] = "Give your books a touch of autumn magic. Use the pumpkin to switch back.",
     ["Try appearance"] = "Try appearance",

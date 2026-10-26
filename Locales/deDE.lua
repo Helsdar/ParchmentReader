@@ -1,4 +1,10 @@
 ParchmentReader:RegisterLocale("deDE", {
+    ["Recover the unsaved draft from %s?"] = "Ungespeicherten Entwurf vom %s wiederherstellen?",
+    ["Restore"] = "Wiederherstellen",
+    ["Delete Draft"] = "Entwurf löschen",
+    ["Recovered Book"] = "Wiederhergestelltes Buch",
+    ["The original book changed or was deleted. Restore will create a separate copy."] = "Das ursprüngliche Buch wurde geändert oder gelöscht. Der Entwurf wird als separate Kopie wiederhergestellt.",
+    ["This book is already open in another editor. Close it before restoring this draft."] = "Dieses Buch ist bereits in einem anderen Editor geöffnet. Schließe ihn, bevor du den Entwurf wiederherstellst.",
     ["Hallow's End appearance is available"] = "Das Schlotternächte-Design ist verfügbar",
     ["Give your books a touch of autumn magic. Use the pumpkin to switch back."] = "Ein Hauch Herbstmagie für eure Bücher. Mit dem Kürbis wechselt ihr zurück.",
     ["Try appearance"] = "Design ausprobieren",

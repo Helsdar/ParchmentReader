@@ -1,4 +1,10 @@
 ParchmentReader:RegisterLocale("frFR", {
+    ["Recover the unsaved draft from %s?"] = "Restaurer le brouillon non enregistré du %s ?",
+    ["Restore"] = "Restaurer",
+    ["Delete Draft"] = "Supprimer le brouillon",
+    ["Recovered Book"] = "Livre restauré",
+    ["The original book changed or was deleted. Restore will create a separate copy."] = "Le livre original a été modifié ou supprimé. Le brouillon sera restauré dans une copie distincte.",
+    ["This book is already open in another editor. Close it before restoring this draft."] = "Ce livre est déjà ouvert dans un autre éditeur. Fermez-le avant de restaurer ce brouillon.",
     ["Hallow's End appearance is available"] = "L’apparence de la Sanssaint est disponible",
     ["Give your books a touch of autumn magic. Use the pumpkin to switch back."] = "Un peu de magie automnale pour vos livres. La citrouille rétablit le thème précédent.",
     ["Try appearance"] = "Essayer l’apparence",

@@ -39,6 +39,7 @@ local function RefreshEditorDirtyState(frame)
     frame.isDirty = (frame.titleInput:GetText() or "") ~= baseline.title
         or (frame.contentInput:GetText() or "") ~= baseline.content
         or frame.selectedCollection ~= baseline.collection
+    ParchmentReader:SyncEditorDraft(frame)
 end
 
 local function CaptureEditorBaseline(frame)
@@ -49,6 +50,7 @@ local function CaptureEditorBaseline(frame)
     }
     frame.savedBookBaseline = ParchmentReader:CaptureSavedBookBaseline(frame.editingBook)
     frame.isDirty = false
+    ParchmentReader:CaptureEditorDraft(frame, "book", frame.editorBaseline)
     RefreshCharacterCount(frame)
 end
 
@@ -167,6 +169,7 @@ function ParchmentReader:CreateBookEditorFrame()
                 or editorFrame.pendingDiscardData ~= data then return end
             local action = editorFrame.pendingEditorAction or "close"
             local pendingBookKey = editorFrame.pendingBookKey
+            ParchmentReader:ClearEditorDraft(editorFrame)
             InvalidateEditorConfirmations(editorFrame)
             editorFrame.isDirty = false
             if action == "open" then
@@ -201,6 +204,7 @@ function ParchmentReader:CreateBookEditorFrame()
             InvalidateEditorConfirmations(editorFrame)
 
 
+            ParchmentReader:ClearEditorDraft(editorFrame)
             if ParchmentReaderDB.customBooks then
                 ParchmentReaderDB.customBooks[bookKey] = nil
             end
@@ -435,6 +439,7 @@ function ParchmentReader:CreateBookEditorFrame()
             ShowDiscardConfirmation(frame)
         end
     end)
+    PRUI.BindEditorFocusRelease(frame, {titleInput, editBox}, collectionPicker.popover)
 
 
     local saveBtn = PRUI.Button(frame, L["Save Book"], {width = 132, height = 26})
@@ -500,6 +505,17 @@ function ParchmentReader:ShowBookEditor(bookKey)
     if bookKey and existing and existing:IsShown() and existing.editingBook == bookKey then
         existing:Raise()
         return
+    end
+    local quickDraft = self:GetEditorDraft("quickNote")
+    if bookKey and quickDraft and quickDraft.source and quickDraft.source.key == bookKey
+        and not (quick and quick:IsShown() and quick.draftSlot) then
+        self:OfferEditorDraft("quickNote", function() self:ShowBookEditor(bookKey) end,
+            function(draft, copy) self:RestoreQuickNoteDraft(draft, copy) end)
+        return
+    end
+    if not (existing and existing:IsShown() and existing.draftSlot) then
+        if self:OfferEditorDraft("book", function() self:ShowBookEditor(bookKey) end,
+            function(draft, copy) self:RestoreBookDraft(draft, copy) end) then return end
     end
     if bookKey then
         local book = self.books[bookKey]
@@ -572,6 +588,35 @@ function ParchmentReader:ShowBookEditor(bookKey)
     RefreshContentInputLayout(frame)
 end
 
+function ParchmentReader:RestoreBookDraft(draft, copy)
+    local source = not copy and draft.source or nil
+    local quick = ParchmentReaderQuickNoteFrame
+    if source and quick and quick:IsShown() and quick.editingBook == source.key then
+        self:PrintMessage("This book is already open in another editor. Close it before restoring this draft.")
+        return
+    end
+
+    local drafts = ParchmentReaderDB.editorDrafts
+    drafts.book = nil
+    self:ShowBookEditor(source and source.key)
+    drafts.book = draft
+    local frame = ParchmentReaderEditorFrame
+    frame.syncingEditor = true
+    local collection = self:DraftCollection(draft.collection)
+    frame.titleInput:SetText(copy and self:UniqueDraftTitle(collection, draft.title) or draft.title)
+    frame.contentInput:SetText(draft.content)
+    RefreshCollectionPicker(frame, collection)
+    frame.editorBaseline = copy and {title = "", content = "", collection = collection}
+        or {title = draft.original.title, content = draft.original.content,
+            collection = self:DraftCollection(draft.original.collection)}
+    frame.quickNoteSave = draft.quickNoteSave
+    self:CaptureEditorDraft(frame, "book", frame.editorBaseline)
+    frame.syncingEditor = false
+    frame.isDirty = true
+    RefreshCharacterCount(frame)
+    if copy then self:SyncEditorDraft(frame) end
+end
+
 function ParchmentReader:SaveBook()
     local frame = ParchmentReaderEditorFrame
     local title = trim(frame.titleInput:GetText() or "")
@@ -598,6 +643,7 @@ function ParchmentReader:SaveBook()
         return
     end
     if frame.quickNoteSave then ParchmentReaderDB.lastQuickNote = newKey end
+    self:ClearEditorDraft(frame)
     if self.RefreshQuickNoteResumeRow then self:RefreshQuickNoteResumeRow() end
     frame.isDirty = false
     InvalidateEditorConfirmations(frame)
