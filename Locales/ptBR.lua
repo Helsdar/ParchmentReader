@@ -1,4 +1,10 @@
 ParchmentReader:RegisterLocale("ptBR", {
+    ["Recover the unsaved draft from %s?"] = "Restaurar o rascunho não salvo de %s?",
+    ["Restore"] = "Restaurar",
+    ["Delete Draft"] = "Excluir rascunho",
+    ["Recovered Book"] = "Livro recuperado",
+    ["The original book changed or was deleted. Restore will create a separate copy."] = "O livro original foi alterado ou excluído. O rascunho será restaurado como uma cópia separada.",
+    ["This book is already open in another editor. Close it before restoring this draft."] = "Este livro já está aberto em outro editor. Feche-o antes de restaurar este rascunho.",
     ["Hallow's End appearance is available"] = "A aparência da Noturnália está disponível",
     ["Give your books a touch of autumn magic. Use the pumpkin to switch back."] = "Um toque de magia de outono nos seus livros. A abóbora restaura o tema anterior.",
     ["Try appearance"] = "Experimentar aparência",

@@ -1,4 +1,10 @@
 ParchmentReader:RegisterLocale("ruRU", {
+    ["Recover the unsaved draft from %s?"] = "Восстановить несохранённый черновик от %s?",
+    ["Restore"] = "Восстановить",
+    ["Delete Draft"] = "Удалить черновик",
+    ["Recovered Book"] = "Восстановленная книга",
+    ["The original book changed or was deleted. Restore will create a separate copy."] = "Исходная книга изменена или удалена. Черновик будет восстановлен как отдельная копия.",
+    ["This book is already open in another editor. Close it before restoring this draft."] = "Эта книга уже открыта в другом редакторе. Закройте его перед восстановлением черновика.",
     ["Hallow's End appearance is available"] = "Доступно оформление Тыквовина",
     ["Give your books a touch of autumn magic. Use the pumpkin to switch back."] = "Добавьте книгам осенней магии. Тыква вернёт привычное оформление.",
     ["Try appearance"] = "Примерить оформление",

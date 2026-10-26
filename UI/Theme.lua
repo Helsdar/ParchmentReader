@@ -1087,6 +1087,37 @@ function PRUI.EditBox(parent, options)
     return editBox, container
 end
 
+
+
+
+function PRUI.BindEditorFocusRelease(frame, editBoxes, relatedFrame)
+    local function RefreshListener()
+        if frame:IsShown() then
+            for _, input in ipairs(editBoxes) do
+                if input:HasFocus() then
+                    frame:RegisterEvent("GLOBAL_MOUSE_DOWN")
+                    return
+                end
+            end
+        end
+        frame:UnregisterEvent("GLOBAL_MOUSE_DOWN")
+    end
+    for _, input in ipairs(editBoxes) do
+        input:HookScript("OnEditFocusGained", RefreshListener)
+        input:HookScript("OnEditFocusLost", RefreshListener)
+    end
+    frame:HookScript("OnEvent", function(owner, event)
+        if event ~= "GLOBAL_MOUSE_DOWN" or owner:IsMouseOver() then return end
+        if relatedFrame and relatedFrame:IsShown() and relatedFrame:IsMouseOver() then return end
+        for _, input in ipairs(editBoxes) do input:ClearFocus() end
+    end)
+    frame:HookScript("OnHide", function()
+        for _, input in ipairs(editBoxes) do input:ClearFocus() end
+        frame:UnregisterEvent("GLOBAL_MOUSE_DOWN")
+    end)
+    RefreshListener()
+end
+
 local function RefreshSlider(slider)
     local minValue, maxValue = slider:GetMinMaxValues()
     local range = maxValue - minValue

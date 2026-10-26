@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.1 — unreleased
+
+- Recover unsaved Add/Edit Book and Quick Note drafts after ordinary reloads or logouts, with one shared draft per editor.
+- See the draft title and date when reopening its editor, then choose **Restore** or **Delete Draft**. Escape keeps the draft for later without opening the requested editor.
+- Keep drafts separately from saved books. Successful Save, confirmed Discard Changes, or reverting all fields clears the draft; a failed Save keeps it.
+- Restore a changed or deleted source book as an explained separate copy, with a unique title that protects existing books.
+- Fixed outside-click keyboard focus release in Add/Edit Book and Quick Note.
+
+Existing books, collections, bookmarks, reading progress, and settings are preserved. Drafts do not expire. This supports normal reloads and logouts; it is not a crash-recovery guarantee.
+
 ## 2.1.0 — 2026-10-19
 
 - Added Hallow's End appearance across the reader, editor, Quick Note, and settings.

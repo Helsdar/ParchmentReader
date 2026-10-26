@@ -125,6 +125,10 @@ function ParchmentReader:RekeyOpenBookReferences(oldKey, newKey)
             if draft.editingBook == oldKey then draft.editingBook = newKey end
             local baseline = draft.savedBookBaseline
             if baseline and baseline.key == oldKey then
+                if draft.selectedCollection == baseline.collection then draft.selectedCollection = book and book.collection end
+                if draft.quickNoteBaseline and draft.quickNoteBaseline.collection == baseline.collection then
+                    draft.quickNoteBaseline.collection = book and book.collection
+                end
                 baseline.key = newKey
                 if book then
                     baseline.title = book.title
@@ -133,6 +137,7 @@ function ParchmentReader:RekeyOpenBookReferences(oldKey, newKey)
             end
         end
     end
+    self:RekeyEditorDrafts(oldKey, newKey)
     if self.RefreshQuickNoteResumeRow then self:RefreshQuickNoteResumeRow() end
     local navigation = ParchmentReader.readerSearchNavigation
     if navigation and navigation.bookKey == oldKey then
@@ -141,6 +146,21 @@ function ParchmentReader:RekeyOpenBookReferences(oldKey, newKey)
 end
 
 local function UpdateEditorCollection(oldName, newName)
+    for _, slot in ipairs({"book", "quickNote"}) do
+        local draft = ParchmentReader:GetEditorDraft(slot)
+        if draft and (slot == "book" or draft.source or draft.recoveredCopy) then
+            if draft.collection == oldName then draft.collection = newName end
+            if draft.original.collection == oldName then draft.original.collection = newName end
+        end
+    end
+    local quick = ParchmentReaderQuickNoteFrame
+    if quick and (quick.editingBook or quick.recoveredCopy) then
+        if quick.selectedCollection == oldName then quick.selectedCollection = newName end
+        if quick.quickNoteBaseline and quick.quickNoteBaseline.collection == oldName then
+            quick.quickNoteBaseline.collection = newName
+        end
+        if ParchmentReader.RefreshQuickNoteResumeRow then ParchmentReader:RefreshQuickNoteResumeRow() end
+    end
     local editor = ParchmentReaderEditorFrame
     if not editor then return end
     if editor.selectedCollection == oldName then
@@ -148,6 +168,33 @@ local function UpdateEditorCollection(oldName, newName)
     end
     if editor.editorBaseline and editor.editorBaseline.collection == oldName then
         editor.editorBaseline.collection = newName
+    end
+end
+
+function ParchmentReader:RekeyEditorDrafts(oldKey, newKey)
+    local current = self:CaptureSavedBookBaseline(newKey)
+    if not current then return end
+    local function update(source)
+        if source and source.key == oldKey and source.content == current.content
+            and source.savedContent == current.savedContent and source.revision == current.revision
+            and source.createdAt == current.createdAt then
+            local collection = source.collection
+            source.key, source.title, source.collection = newKey, current.title, current.collection
+            return true, collection
+        end
+    end
+    for _, slot in ipairs({"book", "quickNote"}) do
+        local draft = self:GetEditorDraft(slot)
+        if draft then
+            local changed, collection = update(draft.source)
+            if changed then
+                if draft.collection == collection then draft.collection = current.collection end
+                if draft.original.collection == collection then draft.original.collection = current.collection end
+            end
+        end
+    end
+    for _, frame in ipairs({ParchmentReaderEditorFrame or false, ParchmentReaderQuickNoteFrame or false}) do
+        if frame then update(frame.draftSource) end
     end
 end
 
@@ -159,7 +206,133 @@ function ParchmentReader:CaptureSavedBookBaseline(key)
     return {key = key, book = book, saved = saved, title = book.title,
         collection = book.collection, content = book.content,
         savedContent = type(saved) == "table" and saved.content or saved,
-        revision = type(saved) == "table" and saved.revision or nil}
+        revision = type(saved) == "table" and saved.revision or nil,
+        createdAt = type(saved) == "table" and saved.createdAt or nil}
+end
+
+
+
+function ParchmentReader:GetEditorDraft(slot)
+    local drafts = ParchmentReaderDB.editorDrafts
+    return drafts and drafts[slot]
+end
+
+function ParchmentReader:ClearEditorDraft(frame)
+    if not frame then return end
+    if frame.draftSlot and ParchmentReaderDB.editorDrafts then
+        ParchmentReaderDB.editorDrafts[frame.draftSlot] = nil
+    end
+end
+
+function ParchmentReader:CaptureEditorDraft(frame, slot, original)
+    frame.draftSlot = slot
+    frame.draftOriginal = original
+    local baseline = frame.savedBookBaseline
+    frame.draftSource = baseline and {
+        key = baseline.key, title = baseline.title, collection = baseline.collection,
+        content = baseline.content, savedContent = baseline.savedContent,
+        revision = baseline.revision, createdAt = baseline.createdAt,
+    } or nil
+end
+
+function ParchmentReader:SyncEditorDraft(frame)
+    if not frame.draftSlot then return end
+    if not frame.isDirty then self:ClearEditorDraft(frame); return end
+    local original = frame.draftOriginal
+    local source = frame.draftSource
+    local function fields(value)
+        return {title = value.title, content = value.content, collection = value.collection}
+    end
+    local snapshot
+    if source then
+        snapshot = fields(source)
+        snapshot.key, snapshot.savedContent = source.key, source.savedContent
+        snapshot.revision, snapshot.createdAt = source.revision, source.createdAt
+    end
+    ParchmentReaderDB.editorDrafts = ParchmentReaderDB.editorDrafts or {}
+    ParchmentReaderDB.editorDrafts[frame.draftSlot] = {
+        title = frame.titleInput:GetText() or "", content = frame.contentInput:GetText() or "",
+        collection = frame.selectedCollection, original = fields(original),
+        source = snapshot, updatedAt = time(), quickNoteSave = frame.quickNoteSave,
+        recoveredCopy = frame.recoveredCopy,
+    }
+end
+
+function ParchmentReader:DraftSourceMatches(source)
+    if not source then return true end
+    local current = self:CaptureSavedBookBaseline(source.key)
+    return current and current.title == source.title and current.collection == source.collection
+        and current.content == source.content and current.savedContent == source.savedContent
+        and current.revision == source.revision and current.createdAt == source.createdAt
+        and (type(current.saved) ~= "table" or current.saved.collection == source.collection)
+end
+
+function ParchmentReader:DraftCollection(collection)
+    for _, name in ipairs(ParchmentReaderDB.collections or {}) do
+        if name == collection then return collection end
+    end
+    return nil
+end
+
+function ParchmentReader:UniqueDraftTitle(collection, title)
+    local base = (title or ""):match("^%s*(.-)%s*$")
+    if base == "" then base = self.L["Recovered Book"] end
+    local candidate, suffix = base, 2
+    local saved = ParchmentReaderDB.customBooks or {}
+    while self.books[self:BookKey(collection, candidate)] or saved[self:BookKey(collection, candidate)] do
+        candidate = string.format("%s (%d)", base, suffix)
+        suffix = suffix + 1
+    end
+    return candidate
+end
+
+
+
+function ParchmentReader:OfferEditorDraft(slot, requested, restore)
+    local draft = self:GetEditorDraft(slot)
+    if not draft then return false end
+    self.pendingDraftRecovery = self.pendingDraftRecovery or {}
+    local pending = self.pendingDraftRecovery[slot]
+    if pending and pending.draft == draft then
+        pending.requested = requested
+        return true
+    end
+    local data = {slot = slot, draft = draft, requested = requested, restore = restore}
+    self.pendingDraftRecovery[slot] = data
+    local function current()
+        return self.pendingDraftRecovery[slot] == data and self:GetEditorDraft(slot) == draft
+    end
+    local popupName = "PARCHMENTREADER_RECOVER_" .. slot
+    StaticPopupDialogs[popupName] = {
+        text = self.L["Recover the unsaved draft from %s?"],
+        button1 = self.L["Restore"], button2 = self.L["Delete Draft"],
+        OnAccept = function(_, callbackData)
+            if callbackData ~= data or not current() then return end
+            self.pendingDraftRecovery[slot] = nil
+            local copy = not self:DraftSourceMatches(draft.source)
+            if copy then self:PrintMessage("The original book changed or was deleted. Restore will create a separate copy.") end
+            data.restore(draft, copy)
+        end,
+        OnCancel = function(_, callbackData, reason)
+            if callbackData ~= data or not current() then return end
+            self.pendingDraftRecovery[slot] = nil
+            if reason == "clicked" then
+                ParchmentReaderDB.editorDrafts[slot] = nil
+                data.requested()
+            end
+        end,
+        OnHide = function(_, callbackData)
+            if callbackData ~= data then return end
+            if self.pendingDraftRecovery[slot] == data then self.pendingDraftRecovery[slot] = nil end
+        end,
+        timeout = 0, whileDead = true, hideOnEscape = true, noCancelOnEscape = true,
+    }
+    local text = date("%Y-%m-%d %H:%M", draft.updatedAt) .. "\n" .. draft.title
+    if draft.source and not self:DraftSourceMatches(draft.source) then
+        text = text .. "\n\n" .. self.L["The original book changed or was deleted. Restore will create a separate copy."]
+    end
+    StaticPopup_Show(popupName, text, nil, data)
+    return true
 end
 
 function ParchmentReader:SavedBookMatchesBaseline(key, baseline)
@@ -171,6 +344,7 @@ function ParchmentReader:SavedBookMatchesBaseline(key, baseline)
         and (type(saved) ~= "table" or saved.collection == baseline.collection)
         and (type(saved) == "table" and saved.content or saved) == baseline.savedContent
         and (type(saved) == "table" and saved.revision or nil) == baseline.revision
+        and (type(saved) == "table" and saved.createdAt or nil) == baseline.createdAt
 end
 
 

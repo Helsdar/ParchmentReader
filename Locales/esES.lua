@@ -1,4 +1,10 @@
 ParchmentReader:RegisterLocale("esES", {
+    ["Recover the unsaved draft from %s?"] = "¿Restaurar el borrador sin guardar del %s?",
+    ["Restore"] = "Restaurar",
+    ["Delete Draft"] = "Eliminar borrador",
+    ["Recovered Book"] = "Libro recuperado",
+    ["The original book changed or was deleted. Restore will create a separate copy."] = "El libro original ha cambiado o se ha eliminado. El borrador se restaurará como una copia independiente.",
+    ["This book is already open in another editor. Close it before restoring this draft."] = "Este libro ya está abierto en otro editor. Ciérralo antes de restaurar este borrador.",
     ["Hallow's End appearance is available"] = "La apariencia de Halloween está disponible",
     ["Give your books a touch of autumn magic. Use the pumpkin to switch back."] = "Un toque de magia otoñal para tus libros. La calabaza restaura el tema anterior.",
     ["Try appearance"] = "Probar apariencia",

@@ -57,8 +57,10 @@ local function CaptureBaseline(frame)
     frame.quickNoteBaseline = {
         title = frame.titleInput:GetText() or "",
         content = frame.contentInput:GetText() or "",
+        collection = frame.selectedCollection,
     }
     frame.isDirty = false
+    ParchmentReader:CaptureEditorDraft(frame, "quickNote", frame.quickNoteBaseline)
 end
 
 local function RefreshDirtyState(frame)
@@ -67,6 +69,8 @@ local function RefreshDirtyState(frame)
 
     frame.isDirty = (frame.titleInput:GetText() or "") ~= baseline.title
         or (frame.contentInput:GetText() or "") ~= baseline.content
+        or frame.selectedCollection ~= baseline.collection
+    ParchmentReader:SyncEditorDraft(frame)
 end
 
 local function ResetQuickNote(frame)
@@ -78,6 +82,8 @@ local function ResetQuickNote(frame)
     if popup then popup:Hide() end
     frame.editingBook = nil
     frame.savedBookBaseline = nil
+    frame.selectedCollection = QUICK_NOTE_COLLECTION
+    frame.recoveredCopy = nil
     frame.syncingQuickNote = true
     frame.titleInput:SetText("")
     frame.contentInput:SetText("")
@@ -91,6 +97,7 @@ local function ResetQuickNote(frame)
 end
 
 local function HideQuickNote(frame)
+    ParchmentReader:ClearEditorDraft(frame)
     frame.isDirty = false
     frame:Hide()
     ResetQuickNote(frame)
@@ -130,7 +137,9 @@ local function BuildUniqueTitle(collection, requestedTitle, timestamp)
 
     local title = baseTitle
     local suffix = 2
-    while ParchmentReader.books[ParchmentReader:BookKey(collection, title)] do
+    local saved = ParchmentReaderDB.customBooks or {}
+    while ParchmentReader.books[ParchmentReader:BookKey(collection, title)]
+        or saved[ParchmentReader:BookKey(collection, title)] do
         title = string.format("%s (%d)", baseTitle, suffix)
         suffix = suffix + 1
     end
@@ -369,6 +378,7 @@ function ParchmentReader:CreateQuickNoteFrame()
             ShowDiscardConfirmation(frame)
         end
     end)
+    PRUI.BindEditorFocusRelease(frame, {titleInput, editBox})
 
     frame.syncingQuickNote = false
     frame.isDirty = false
@@ -403,10 +413,16 @@ function ParchmentReader:RefreshQuickNoteResumeRow()
     frame.saveButton:SetText(frame.editingBook and L["Save Changes"] or L["Save"])
     frame.collectionHint:SetText(frame.editingBook
         and string.format(L["Collection: %s"], editing and editing.collection or L["No Collection"])
+        or frame.recoveredCopy and string.format(L["Collection: %s"], frame.selectedCollection or L["No Collection"])
         or L["Saved to Notes"])
 end
 
 function ParchmentReader:ShowQuickNote()
+    local existing = ParchmentReaderQuickNoteFrame
+    if not (existing and existing:IsShown() and existing.draftSlot) then
+        if self:OfferEditorDraft("quickNote", function() self:ShowQuickNote() end,
+            function(draft, copy) self:RestoreQuickNoteDraft(draft, copy) end) then return end
+    end
     if not ParchmentReaderQuickNoteFrame then self:CreateQuickNoteFrame() end
     local frame = ParchmentReaderQuickNoteFrame
     UpdateQuickNoteFrameLevel(frame)
@@ -425,6 +441,11 @@ function ParchmentReader:ShowQuickNote()
 end
 
 function ParchmentReader:ResumeLastQuickNote()
+    local existing = ParchmentReaderQuickNoteFrame
+    if not (existing and existing:IsShown() and existing.draftSlot) then
+        if self:OfferEditorDraft("quickNote", function() self:ResumeLastQuickNote() end,
+            function(draft, copy) self:RestoreQuickNoteDraft(draft, copy) end) then return end
+    end
     local book, key = self:GetLastQuickNote()
     if not book then
         self:ShowQuickNote()
@@ -434,6 +455,13 @@ function ParchmentReader:ResumeLastQuickNote()
     if editor and editor:IsShown() and editor.editingBook == key then
         editor.quickNoteSave = true
         editor:Raise()
+        return
+    end
+    local bookDraft = self:GetEditorDraft("book")
+    if bookDraft and bookDraft.source and bookDraft.source.key == key
+        and not (editor and editor:IsShown() and editor.draftSlot) then
+        self:OfferEditorDraft("book", function() self:ResumeLastQuickNote() end,
+            function(draft, copy) self:RestoreBookDraft(draft, copy) end)
         return
     end
     if not ParchmentReaderQuickNoteFrame then self:CreateQuickNoteFrame() end
@@ -448,6 +476,7 @@ function ParchmentReader:ResumeLastQuickNote()
     end
     ResetQuickNote(frame)
     frame.editingBook = key
+    frame.selectedCollection = book.collection
     frame.savedBookBaseline = self:CaptureSavedBookBaseline(key)
     frame.syncingQuickNote = true
     frame.titleInput:SetText(book.title)
@@ -462,6 +491,42 @@ function ParchmentReader:ResumeLastQuickNote()
             frame.contentInput:SetCursorPosition(#frame.contentInput:GetText())
         end
     end)
+end
+
+function ParchmentReader:RestoreQuickNoteDraft(draft, copy)
+    local source = not copy and draft.source or nil
+    local editor = ParchmentReaderEditorFrame
+    if source and editor and editor:IsShown() and editor.editingBook == source.key then
+        self:PrintMessage("This book is already open in another editor. Close it before restoring this draft.")
+        return
+    end
+    local drafts = ParchmentReaderDB.editorDrafts
+    drafts.quickNote = nil
+    if not ParchmentReaderQuickNoteFrame then self:CreateQuickNoteFrame() end
+    local frame = ParchmentReaderQuickNoteFrame
+    ResetQuickNote(frame)
+    frame.editingBook = source and source.key
+    frame.savedBookBaseline = self:CaptureSavedBookBaseline(frame.editingBook)
+
+
+
+    frame.recoveredCopy = copy or draft.recoveredCopy
+    if source then frame.selectedCollection = source.collection
+    elseif frame.recoveredCopy then frame.selectedCollection = self:DraftCollection(draft.collection)
+    else frame.selectedCollection = QUICK_NOTE_COLLECTION end
+    frame.syncingQuickNote = true
+    frame.titleInput:SetText(copy and self:UniqueDraftTitle(frame.selectedCollection, draft.title) or draft.title)
+    frame.contentInput:SetText(draft.content)
+    frame.quickNoteBaseline = copy and {title = "", content = "", collection = frame.selectedCollection}
+        or {title = draft.original.title, content = draft.original.content,
+            collection = frame.recoveredCopy and self:DraftCollection(draft.original.collection)
+                or draft.original.collection}
+    self:CaptureEditorDraft(frame, "quickNote", frame.quickNoteBaseline)
+    frame.syncingQuickNote = false
+    frame.isDirty = true
+    self:ShowQuickNote()
+    drafts.quickNote = draft
+    if copy then self:SyncEditorDraft(frame) end
 end
 
 function ParchmentReader:SaveQuickNote()
@@ -493,16 +558,17 @@ function ParchmentReader:SaveQuickNote()
     end
 
     local now = time()
+    local collection = frame.selectedCollection
     local title = BuildUniqueTitle(
-        QUICK_NOTE_COLLECTION,
+        collection,
         frame.titleInput:GetText(),
         now)
 
-    if not CollectionExists(QUICK_NOTE_COLLECTION) then
+    if not frame.recoveredCopy and not CollectionExists(QUICK_NOTE_COLLECTION) then
         self:AddCollection(QUICK_NOTE_COLLECTION)
     end
 
-    local ok, savedKey = self:SaveCustomBook(nil, title, content, QUICK_NOTE_COLLECTION)
+    local ok, savedKey = self:SaveCustomBook(nil, title, content, collection)
     if not ok then return end
     ParchmentReaderDB.lastQuickNote = savedKey
     if ParchmentReaderFrame then self:RefreshCollectionSelector() end

@@ -138,11 +138,24 @@ manifest.
 - `/reader refresh` — refresh the reader interface.
 - `/pr` — short alias for `/reader`.
 
+## Unsaved drafts
+
+Add/Edit Book and Quick Note each retain one unsaved draft across ordinary
+`/reload` and relog. The next editor opening offers **Restore** or **Delete
+Draft**, with its title and date. Escape leaves the draft for later. Drafts are
+shared between characters using the same database and do not expire.
+
+Successful Save, confirmed Discard Changes, or returning all fields to their
+original values clears the draft. A failed Save keeps it. If the original book
+changed or disappeared, restore the text as a separate copy. This supports
+normal reloads/logouts and is not a crash-recovery guarantee.
+
 ## Saved data
 
-Books, collections, bookmarks, reading positions, and settings are stored by
-World of Warcraft in `ParchmentReaderDB`. Back up the account's `WTF` directory
-before updating the addon, reinstalling the game, or moving to another computer.
+Books, collections, bookmarks, reading positions, settings, and unsaved editor
+drafts are stored by World of Warcraft in the account-wide `ParchmentReaderDB`.
+Back up the account's `WTF` directory before updating the addon, reinstalling the
+game, or moving to another computer.
 Version 2.0.1 retains books, bookmarks, and reading progress, adding only the
 custom transparency amount and hover preference to settings.
 Version 2.0.2 improves bookmark presentation without changing saved books,
@@ -154,6 +167,10 @@ existing bookmark records, names, and saved data format.
 Version 2.1.0 preserves books, bookmarks, reading progress, and
 ordinary theme choices. Seasonal preferences and invitation seen state persist
 between sessions; reinstalling does not reset the invitation.
+Version 2.1.1 adds `editorDrafts` with separate Add/Edit Book and Quick Note
+slots. These drafts are shared across characters using the same database and
+remain separate from saved books. Existing books, collections, bookmarks,
+reading progress, and settings are preserved; no saved-data reset is required.
 
 ## License
 
