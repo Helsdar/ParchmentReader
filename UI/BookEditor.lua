@@ -192,72 +192,6 @@ function ParchmentReader:CreateBookEditorFrame()
         hideOnEscape = true,
     }
 
-    StaticPopupDialogs["PARCHMENTREADER_DELETE"] = {
-        text = L["Delete book “%s”?"],
-        button1 = L["Delete"],
-        button2 = L["Cancel"],
-        OnAccept = function(_, data)
-            local bookKey = data.bookKey
-            local editorFrame = data.editorFrame
-            if editorFrame.draftGeneration ~= data.generation
-                or editorFrame.pendingDeleteData ~= data then return end
-            InvalidateEditorConfirmations(editorFrame)
-
-
-            ParchmentReader:ClearEditorDraft(editorFrame)
-            if ParchmentReaderDB.customBooks then
-                ParchmentReaderDB.customBooks[bookKey] = nil
-            end
-            if ParchmentReaderDB.bookPages then
-                ParchmentReaderDB.bookPages[bookKey] = nil
-            end
-            ParchmentReader:DeleteReadingPosition(bookKey)
-            ParchmentReader:DeleteLibraryViewBook(bookKey)
-
-
-            ParchmentReader.books[bookKey] = nil
-            if ParchmentReaderDB.lastQuickNote == bookKey then
-                ParchmentReaderDB.lastQuickNote = nil
-            end
-            if ParchmentReader.RefreshQuickNoteResumeRow then
-                ParchmentReader:RefreshQuickNoteResumeRow()
-            end
-            if ParchmentReaderDB.selectedBook == bookKey then
-                ParchmentReaderDB.selectedBook = nil
-            end
-
-
-            if ParchmentReader.currentBook == bookKey then
-                ParchmentReader.currentBook = nil
-                ParchmentReader.currentPage = 1
-                ParchmentReader.currentReadingOffset = 0
-                ParchmentReader.readerLayoutMetrics = nil
-                if ParchmentReaderFrame then
-                    ParchmentReaderFrame.title:SetText("")
-                    ParchmentReader:UpdateReader()
-                end
-            end
-
-
-            if ParchmentReaderFrame then
-                ParchmentReader:RefreshBookList()
-            end
-
-            editorFrame.isDirty = false
-            editorFrame:Hide()
-        end,
-        OnCancel = function(_, data)
-            local editorFrame = data.editorFrame
-            if editorFrame.draftGeneration ~= data.generation
-                or editorFrame.pendingDeleteData ~= data then return end
-            editorFrame.pendingDeleteData = nil
-            editorFrame.deletePopup = nil
-        end,
-        timeout = 0,
-        whileDead = true,
-        hideOnEscape = true,
-    }
-
     frame.closeButton:SetScript("OnClick", function()
         RequestEditorClose(frame)
     end)
@@ -450,7 +384,7 @@ function ParchmentReader:CreateBookEditorFrame()
     end)
 
 
-    local deleteBtn = PRUI.Button(frame, L["Delete"], {width = 104, height = 26})
+    local deleteBtn = PRUI.Button(frame, L["Move to Trash"], {width = 136, height = 26})
     deleteBtn:SetPoint("LEFT", saveBtn, "RIGHT", 8, 0)
     PRUI.SetButtonTextColor(deleteBtn, Theme:Get("state", "danger"))
     deleteBtn:SetScript("OnClick", function()
@@ -764,16 +698,7 @@ end
 
 function ParchmentReader:DeleteBook()
     local frame = ParchmentReaderEditorFrame
-    local bookKey = frame.editingBook
-
-    if not bookKey then return end
-
-    local book = self.books[bookKey]
-    local displayTitle = book and book.title or bookKey
-
-    if frame.deletePopup and frame.deletePopup:IsShown() then return end
-    frame.pendingDeleteData = {bookKey = bookKey, editorFrame = frame,
-        generation = frame.draftGeneration}
-    frame.deletePopup = StaticPopup_Show(
-        "PARCHMENTREADER_DELETE", displayTitle, nil, frame.pendingDeleteData)
+    if frame and frame.editingBook then
+        return self:RequestTrashBook(frame.editingBook, frame)
+    end
 end

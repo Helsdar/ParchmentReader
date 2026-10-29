@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.0 — 2026-10-29
+
+- Recover deleted saved books and Quick Notes for 30 days through **Settings > General > Maintenance > Open Trash**.
+- Inspect deleted text and restore its saved dates, bookmarks, reading position, and Favorite. Existing titles stay protected; a missing original collection falls back to **No Collection**.
+- Confirm **Delete Permanently** or **Empty Trash** when you want to remove records immediately. Entries expire 30 days after deletion; offline deadlines are processed when the addon next loads.
+- Keep unsaved editor input separately recoverable when moving its saved book into Trash.
+
+Existing books, collections, bookmarks, reading progress, settings, and unsaved editor drafts are preserved. Save still closes the editor. One shared package includes every supported client manifest.
+
 ## 2.1.1 — 2026-10-26
 
 - Recover unsaved Add/Edit Book and Quick Note drafts after ordinary reloads or logouts, with one shared draft per editor.

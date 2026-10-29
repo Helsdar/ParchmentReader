@@ -8,6 +8,8 @@ resizable window.
 
 - Create, edit, and organize saved books and notes.
 - Rename books while keeping their bookmarks and reading positions.
+- Recover deleted saved books and notes for 30 days through a quiet Trash window
+  in Settings > General > Maintenance.
 - Switch between Library, Favorites, and the 20 most recently opened books.
 - Search titles and collections by default, or enable the compact **Aa** scope
   to find a complete phrase in book content within the active collection.
@@ -74,11 +76,13 @@ client checks for this bounded change were waived by the owner.
 
 ## Downloads
 
-Release **2.1.1** recovers unsaved Add/Edit Book and Quick Note drafts after
-ordinary reloads or logouts, with a title/date offer to restore or delete each
-draft. It also fixes outside-click keyboard focus release in both editors.
-Existing books, collections, bookmarks, reading progress, and settings are
-preserved.
+Release **2.2.0** adds a shared 30-day Trash for saved books and Quick Notes.
+Open **Settings > General > Maintenance > Open Trash** to inspect or restore
+records with their saved dates, bookmarks, reading position, and Favorite.
+Permanent deletion and Empty Trash ask for confirmation. Entries expire after
+30 days, including time offline. Existing books, collections, bookmarks,
+reading progress, settings, and separate unsaved editor drafts are preserved.
+All supported clients remain in the shared package.
 
 - [CurseForge](https://www.curseforge.com/wow/addons/parchment-reader)
 - [Wago Addons](https://addons.wago.io/addons/parchment-reader)
@@ -112,6 +116,13 @@ manifest.
 - Use Library, Favorites, and Recent below the search field. Right-click a book
   to change its favorite status, edit it, or move it to another collection.
 - Right-click Recent to clear reading history after confirmation.
+- Use **Move to Trash** from a book's context menu or
+  editor, then use **Settings > General > Maintenance > Open Trash**. Inspect a deleted record and
+  choose **Restore** or **Delete Permanently**; **Empty Trash** clears confirmed
+  entries. Restoring preserves dates, reading position, bookmarks and Favorite,
+  uses a unique title if necessary, and falls back to **No Collection** if the
+  original collection is gone. Entries expire 30 days after deletion; expiry
+  while the game is closed is processed when the addon next loads.
 - Change a book's title in Edit Book; titles must be unique in its collection.
 - Open Quick Note and use **Resume** to continue its last saved note. Assign
   **Resume Last Quick Note** in Controls or WoW Key Bindings for direct access.
@@ -172,6 +183,9 @@ Version 2.1.1 adds `editorDrafts` with separate Add/Edit Book and Quick Note
 slots. These drafts are shared across characters using the same database and
 remain separate from saved books. Existing books, collections, bookmarks,
 reading progress, and settings are preserved; no saved-data reset is required.
+Version 2.2.0 adds a shared Trash for deleted saved books and Quick Notes.
+Restoring retains their saved metadata; records expire 30 days after deletion.
+Unsaved editor drafts remain separate and do not expire.
 
 ## License
 

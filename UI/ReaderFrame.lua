@@ -95,6 +95,11 @@ local function HideReaderMenus(frame)
     end
 end
 
+function ParchmentReader:HideReaderMenus()
+    HideReaderMenus(ParchmentReaderFrame)
+    GameTooltip:Hide()
+end
+
 function ParchmentReader:ConfirmClearReadingHistory()
     StaticPopupDialogs["PARCHMENTREADER_CLEAR_RECENT"] = {
         text = L["Clear reading history? Books and favorites will be kept."],
@@ -844,7 +849,7 @@ function ParchmentReader:RefreshLibraryViewControls()
     frame.sidebarScroll:ClearAllPoints()
     frame.sidebarScroll:SetPoint("TOPLEFT", frame.sidebar, "TOPLEFT", 4, -60)
     frame.sidebarScroll:SetPoint("TOPRIGHT", frame.sidebar, "TOPRIGHT", -4, -60)
-    frame.sidebarScroll:SetPoint("BOTTOMRIGHT", frame.addBookBtn, "TOPRIGHT", 0, 4)
+    frame.sidebarScroll:SetPoint("BOTTOMRIGHT", frame.sidebar, "BOTTOMRIGHT", -4, 60)
 end
 
 function ParchmentReader:SetLibrarySystemView(view)
@@ -1048,7 +1053,7 @@ local function GetBookContextMenu()
         color = Theme:Get("bg", "popover"),
         shadow = true,
     })
-    menu:SetSize(206, 79)
+    menu:SetSize(206, 111)
     PRUI.SetAddonFrameLayer(menu, PRUI.ADDON_FRAME_LEVELS.POPOVER)
     menu:SetClampedToScreen(true)
     menu:EnableMouse(true)
@@ -1088,6 +1093,29 @@ local function GetBookContextMenu()
     menu.moveButton.label:ClearAllPoints()
     menu.moveButton.label:SetPoint("LEFT", menu.moveButton.pruiContent, "LEFT", 8, 0)
     menu.moveButton.label:SetPoint("RIGHT", menu.moveButton.pruiContent, "RIGHT", -8, 0)
+
+    local separator = menu:CreateTexture(nil, "ARTWORK")
+    separator:SetPoint("TOPLEFT", menu.moveButton, "BOTTOMLEFT", 4, -4)
+    separator:SetPoint("TOPRIGHT", menu.moveButton, "BOTTOMRIGHT", -4, -4)
+    separator:SetHeight(1)
+    Theme:BindColor(separator, "SetColorTexture", Theme:Get("border", "subtle"))
+    menu.trashButton = PRUI.Button(menu, L["Move to Trash"], {
+        width = 196, height = 23, justifyH = "LEFT",
+    })
+    menu.trashButton:SetPoint("TOPLEFT", menu.moveButton, "BOTTOMLEFT", 0, -9)
+
+    for _, button in ipairs({menu.favoriteButton, menu.editButton, menu.moveButton, menu.trashButton}) do
+        button.pruiHoverBorderColor = Theme:Get("state", "clear")
+        button.pruiSelectedBorderColor = Theme:Get("state", "clear")
+        PRUI.SetButtonBorderColor(button, Theme:Get("state", "clear"))
+        PRUI.SetButtonIdleBackgroundAlpha(button, 0)
+    end
+    PRUI.SetButtonTextColor(menu.trashButton, Theme:Get("state", "danger"))
+    menu.trashButton:SetScript("OnClick", function()
+        local key = menu.bookKey
+        menu:Hide()
+        ParchmentReader:RequestTrashBook(key)
+    end)
 
     menu.editButton:SetScript("OnClick", function()
         local bookKey = menu.bookKey
@@ -1129,7 +1157,7 @@ local function GetBookContextMenu()
 end
 
 local function SizeBookContextMenu(menu)
-    local buttons = {menu.favoriteButton, menu.editButton, menu.moveButton}
+    local buttons = {menu.favoriteButton, menu.editButton, menu.moveButton, menu.trashButton}
     local textWidth = 0
     for _, button in ipairs(buttons) do
         menu.labelMeasure:SetText(button.label:GetText())
@@ -3266,7 +3294,7 @@ function ParchmentReader:CreateReaderFrame()
     local sidebarScroll = CreateFrame("ScrollFrame", nil, sidebar)
     sidebarScroll:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 4, -60)
     sidebarScroll:SetPoint("TOPRIGHT", sidebar, "TOPRIGHT", -4, -60)
-    sidebarScroll:SetPoint("BOTTOMRIGHT", addBookButton, "TOPRIGHT", 0, 4)
+    sidebarScroll:SetPoint("BOTTOMRIGHT", sidebar, "BOTTOMRIGHT", -4, 60)
     sidebarScroll:SetClipsChildren(true)
     sidebarScroll:EnableMouseWheel(true)
     local bookListScroll = CreateFrame("Frame", nil, sidebarScroll)

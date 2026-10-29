@@ -103,6 +103,20 @@ local function HideQuickNote(frame)
     ResetQuickNote(frame)
 end
 
+
+
+function ParchmentReader:CloseTrashedQuickNote(frame)
+    local slot = frame.draftSlot
+    local retained = slot and self:GetEditorDraft(slot)
+    frame.isDirty = false
+    frame:Hide()
+    ResetQuickNote(frame)
+    if slot and retained then
+        ParchmentReaderDB.editorDrafts = ParchmentReaderDB.editorDrafts or {}
+        ParchmentReaderDB.editorDrafts[slot] = retained
+    end
+end
+
 local function ShowDiscardConfirmation(frame, action)
     frame.pendingQuickNoteAction = action or "close"
     if frame.discardPopup and frame.discardPopup:IsShown() then return end
