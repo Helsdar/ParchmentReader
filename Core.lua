@@ -1505,6 +1505,7 @@ _boot:SetScript("OnEvent", function(self, event, addonName)
         SeedStarterBooks()
         LoadSavedBooks()
         ParchmentReader:InitializeLibraryViewData(ParchmentReader.books)
+        ParchmentReader:InitializeTrash()
         ParchmentReader:RegisterWoWSettingsCategory()
 
         local selectedBook = ParchmentReaderDB.selectedBook

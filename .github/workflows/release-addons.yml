@@ -147,6 +147,7 @@ jobs:
               ParchmentReader/Assets/RecentHistory.tga \
               ParchmentReader/Assets/BookmarkRibbon.tga \
               ParchmentReader/Assets/Pencil.tga \
+              ParchmentReader/Assets/Trash.tga \
               ParchmentReader/Bindings.xml \
               ParchmentReader/LICENSE \
               ParchmentReader/ParchmentReader.toc \
