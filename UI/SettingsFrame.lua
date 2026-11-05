@@ -261,7 +261,7 @@ function ParchmentReader:CreateSettingsFrame()
         Text(panel, title, 0, 0, nil, "primary", "GameFontNormalLarge")
         Text(panel, description, 0, 27, nil, "muted")
         frame.sections[key] = panel
-        local button = PRUI.Button(navigation, title, {width = 124, height = 32, justifyH = "LEFT"})
+        local button = PRUI.Button(navigation, title, {width = 124, height = 32, justifyH = "LEFT", skinRole = "row"})
         button:SetPoint("TOPLEFT", navigation, "TOPLEFT", 10, -(16 + (index - 1) * 40))
         button:SetScript("OnClick", function() frame:SelectSection(key) end)
         frame.sectionButtons[key] = button
@@ -389,31 +389,108 @@ function ParchmentReader:CreateSettingsFrame()
 
 
 
-    frame.currentThemeLabel = Text(appearance, L["Current theme"], 0, 56)
-    frame.themeCards, frame.themeSlotDropdowns = {}, {}
+    frame.currentThemeLabel = Text(appearance, L["Current theme"], 0, 56, 324)
+    frame.themeSlotDropdowns = {}
     local themeItems = {}
-    for index, themeName in ipairs(Theme.order) do
+    for _, themeName in ipairs(Theme.order) do
         themeItems[#themeItems + 1] = {value = themeName, text = L[Theme.names[themeName]]}
-        local card = PRUI.Button(appearance, L[Theme.names[themeName]], {width = 144, height = 76})
+    end
+    frame.themeCards = {}
+    for index = 1, 3 do
+        local card = PRUI.Button(appearance, "", {width = 144, height = 76, skinRole = "control"})
         card:SetPoint("TOPLEFT", appearance, "TOPLEFT", (index - 1) * 156, -76)
         card.label:ClearAllPoints()
-        card.label:SetPoint("BOTTOMLEFT", card.pruiContent, "BOTTOMLEFT", 4, 8)
-        card.label:SetPoint("BOTTOMRIGHT", card.pruiContent, "BOTTOMRIGHT", -4, 8)
+        card.label:SetPoint("BOTTOMLEFT", card.pruiContent, "BOTTOMLEFT", 4, 6)
+        card.label:SetPoint("BOTTOMRIGHT", card.pruiContent, "BOTTOMRIGHT", -4, 6)
+        card.label:SetWidth(136)
+        card.label:SetHeight(26)
         card.label:SetWordWrap(true)
         card.label:SetMaxLines(2)
-        local swatch = card.pruiContent:CreateTexture(nil, "ARTWORK")
-        swatch:SetPoint("TOPLEFT", card.pruiContent, "TOPLEFT", 9, -8)
-        swatch:SetSize(126, 28)
-        local palette = Theme.palettes[themeName]
-        swatch:SetColorTexture(unpack(palette.bg.surface))
-        local preview = card.pruiContent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-        preview:SetPoint("CENTER", swatch, "CENTER", 0, 0)
-        preview:SetText("Aa")
-        preview:SetTextColor(unpack(palette.text.primary))
-        card:SetScript("OnClick", function() ParchmentReader:SetTheme(themeName) end)
-        PRUI.AttachTooltip(card, L[Theme.names[themeName]])
-        frame.themeCards[themeName] = card
+        local preview = CreateFrame("Frame", nil, card.pruiContent)
+        preview:SetPoint("TOPLEFT", card.pruiContent, "TOPLEFT", 9, -8)
+        preview:SetSize(126, 28)
+        preview.paper = preview:CreateTexture(nil, "BACKGROUND")
+        preview.paper:SetAllPoints()
+        preview.warm = preview:CreateTexture(nil, "BACKGROUND", nil, 1)
+        preview.warm:SetAllPoints()
+        preview.warm:SetTexture("Interface\\AddOns\\ParchmentReader\\Assets\\WarmParchmentBC1")
+        preview.warm:SetAlpha(0.30)
+        preview.chrome = preview:CreateTexture(nil, "ARTWORK")
+        preview.chrome:SetPoint("TOPLEFT"); preview.chrome:SetPoint("TOPRIGHT"); preview.chrome:SetHeight(6)
+        preview.action = preview:CreateTexture(nil, "ARTWORK")
+        preview.action:SetPoint("RIGHT", preview, "RIGHT", -4, -3); preview.action:SetSize(20, 12)
+        preview.nativeAction = CreateFrame("Frame", nil, preview)
+        preview.nativeAction:SetPoint("RIGHT", preview, "RIGHT", -4, -3)
+        preview.nativeAction:SetSize(20, 12)
+        preview.nativeAction:EnableMouse(false)
+        preview.nativeAction:Hide()
+        preview.label = preview:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        preview.label:SetPoint("CENTER", preview, "CENTER", 0, -3)
+        preview.label:SetText("Aa")
+        card.preview = preview
+        card:SetScript("OnClick", function(self)
+            if self:IsShown() and self:IsEnabled() and self.themeName then
+                ParchmentReader:SetTheme(self.themeName)
+            end
+        end)
+        PRUI.AttachTooltip(card, function(self) return self.label:GetText() end)
+        frame.themeCards[index] = card
     end
+    local previous = PRUI.IconButton(appearance, nil, L["Previous screen"], {
+        width = 28, height = 22, iconText = "<", fontObject = "GameFontNormalSmall", skinRole = "control"})
+    previous:SetPoint("TOPLEFT", appearance, "TOPLEFT", 332, -51)
+    local nextPage = PRUI.IconButton(appearance, nil, L["Next screen"], {
+        width = 28, height = 22, iconText = ">", fontObject = "GameFontNormalSmall", skinRole = "control"})
+    nextPage:SetPoint("TOPLEFT", appearance, "TOPLEFT", 428, -51)
+    frame.themePreviousButton, frame.themeNextButton = previous, nextPage
+    frame.themePageLabel = Text(appearance, "", 364, 56, 60)
+    frame.themePageLabel:SetJustifyH("CENTER")
+    function frame:SetThemePage(page)
+        local pageCount = math.max(1, math.ceil(#Theme.order / 3))
+        self.themePage = math.max(1, math.min(pageCount, math.floor(tonumber(page) or 1)))
+        self.themePageLabel:SetText(self.themePage .. " / " .. pageCount)
+        if self.themePage > 1 then previous:Enable() else previous:Disable() end
+        if self.themePage < pageCount then nextPage:Enable() else nextPage:Disable() end
+        for index, card in ipairs(self.themeCards) do
+            local name = Theme.order[(self.themePage - 1) * 3 + index]
+            if card.themeName ~= name then
+                card.pruiHovered, card.pruiPressed = false, false
+                card.pruiTooltipGeneration = (card.pruiTooltipGeneration or 0) + 1
+                if GameTooltip:IsOwned(card) then GameTooltip:Hide() end
+            end
+            card.themeName = name
+            card:SetShown(name ~= nil)
+            PRUI.SetButtonSelected(card, name ~= nil and name == ParchmentReaderDB.themeName)
+            if name then
+                card:SetText(L[Theme.names[name]])
+                local palette, skin = Theme.palettes[name], Theme:GetSkin(name)
+                local preview = card.preview
+
+
+                preview.paper:SetVertexColor(1, 1, 1, 1)
+                preview.chrome:SetVertexColor(1, 1, 1, 1)
+                preview.paper.pruiClientMaterialKey, preview.chrome.pruiClientMaterialKey = nil, nil
+                preview.paper:SetColorTexture(unpack(palette.bg.surface))
+                preview.chrome:SetColorTexture(unpack(palette.bg.sidebar))
+                if skin then
+                    PRUI.ApplySkinPreview(preview.paper, skin, "paper", "surface")
+                    PRUI.ApplySkinPreview(preview.chrome, skin, "chrome", "sidebar")
+                end
+                preview.warm:SetShown(name == "WarmParchment")
+                local native = skin and skin.nativeButtons
+                    and PRUI.RefreshSkinButtonFace(preview.nativeAction, "Up", skin.actionOpacity, false, skin)
+                if not native then PRUI.RefreshSkinButtonFace(preview.nativeAction) end
+                preview.nativeAction:SetShown(native == true)
+                preview.action:SetShown(skin ~= nil and (skin.action ~= nil or skin.actionColor ~= nil) and not native)
+                if skin and skin.action then preview.action:SetTexture("Interface\\AddOns\\ParchmentReader\\Assets\\" .. skin.action)
+                elseif skin and skin.actionColor then preview.action:SetColorTexture(unpack(skin.actionColor)) end
+                preview.label:SetTextColor(unpack((palette.paperText or palette.text).primary))
+                preview.label:SetShadowColor(0, 0, 0, (Theme:IsLight(name) or Theme:IsHybrid(name)) and 0 or 1)
+            end
+        end
+    end
+    previous:SetScript("OnClick", function(self) if self:IsEnabled() then frame:SetThemePage(frame.themePage - 1) end end)
+    nextPage:SetScript("OnClick", function(self) if self:IsEnabled() then frame:SetThemePage(frame.themePage + 1) end end)
     for index, slot in ipairs({"sun", "moon"}) do
         local x = (index - 1) * 240
         local label = Text(appearance, L[slot == "sun" and "Sun button" or "Moon button"], x + 20, 168, 196)
@@ -434,15 +511,24 @@ function ParchmentReader:CreateSettingsFrame()
         PRUI.AttachTooltip(dropdown, function(button) return button:GetFontString():GetText() end)
         frame.themeSlotDropdowns[slot] = dropdown
     end
-    function frame:RefreshThemeControls()
+    function frame:RefreshThemeControls(revealActive)
         self.holidayAppearanceCheck:SetShown(ParchmentReader:IsHolidayAppearanceAvailable())
         self.holidayAppearanceCheck:SetChecked(ParchmentReader:IsHolidayAppearanceEnabled())
         PRUI.RefreshCheckbox(self.holidayAppearanceCheck)
         self.currentThemeLabel:SetText(L["Current theme"]
             .. (Theme.paletteName == "HallowsEnd" and ": " .. L["Hallow's End"] or ""))
-        for themeName, card in pairs(self.themeCards) do
-            PRUI.SetButtonSelected(card, themeName == Theme:NormalizeName(ParchmentReaderDB.themeName))
+        local themeName = Theme:NormalizeName(ParchmentReaderDB.themeName)
+        local ordinary = Theme:IsOrdinary(themeName) and themeName
+            or Theme:NormalizeName(ParchmentReaderDB.hallowsEndReturnTheme)
+        if revealActive or self.themePickerLastOrdinary ~= ordinary
+            or (Theme:IsOrdinary(themeName) and self.themePickerLastActive ~= themeName) then
+            for index, name in ipairs(Theme.order) do
+                if name == ordinary then self.themePage = math.ceil(index / 3); break end
+            end
         end
+        self.themePickerLastOrdinary = ordinary
+        self.themePickerLastActive = themeName
+        self:SetThemePage(self.themePage)
         local moon, sun = Theme:NormalizeSlots(ParchmentReaderDB)
         self.themeSlotDropdowns.moon:SetValue(moon, true)
         self.themeSlotDropdowns.sun:SetValue(sun, true)
@@ -490,7 +576,7 @@ function ParchmentReader:CreateSettingsFrame()
     customTransparencySlider.valueText:Hide()
     PRUI.AttachTooltip(customTransparencySlider, function()
         local text = L["0% keeps the standard background; 100% hides the background. Text stays visible."]
-        if Theme:IsLight() then
+        if Theme:IsLight() or Theme:IsHybrid() then
             text = text .. "\n\n" .. L["At high transparency, light-theme text may be harder to read. Use a dark theme or enable Transparent until hovered."]
         end
         return text
@@ -691,7 +777,7 @@ function ParchmentReader:CreateSettingsFrame()
         StopBindingCapture(settingsFrame)
         ParchmentReader:RefreshAddonBindingControls()
         ParchmentReader:SyncWindowSizeControls()
-        settingsFrame:RefreshThemeControls()
+        settingsFrame:RefreshThemeControls(true)
         settingsFrame:RefreshFontSample()
         settingsFrame:RefreshTransparencyHint()
     end)

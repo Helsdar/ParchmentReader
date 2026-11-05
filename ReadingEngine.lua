@@ -4,8 +4,10 @@
 local CHUNK_TARGET_BYTES = 1800
 local CHUNK_MIN_BYTES = 900
 local TEXT_POOL_SIZE = 32
-local CONTENT_PADDING_TOP = 4
-local CONTENT_PADDING_BOTTOM = 8
+
+
+local CONTENT_PADDING_TOP = ParchmentReader.Theme.metrics.contentInsetY + 4
+local CONTENT_PADDING_BOTTOM = ParchmentReader.Theme.metrics.contentInsetY + 8
 local VIRTUAL_BUFFER_VIEWPORTS = 0.25
 local RESIZE_DEBOUNCE_SECONDS = 0.12
 local SMOOTH_SCROLL_SPEED = 14
@@ -476,7 +478,9 @@ local function OffsetToScroll(frame, layout, offset)
     local localOffset = Clamp(safeOffset - chunk.startOffset, 0, #chunk.text)
     local prefixHeight = MeasurePrefixHeight(frame, chunk, localOffset)
     local lineTop = math.max(0, prefixHeight - layout.lineHeight)
-    return CONTENT_PADDING_TOP + chunk.top + lineTop
+    local rowTop = chunk.top + lineTop
+
+    return rowTop == 0 and 0 or CONTENT_PADDING_TOP + rowTop
 end
 
 local function ScrollToOffset(frame, layout, scrollOffset)
@@ -773,7 +777,8 @@ function ParchmentReader:ScrollReaderToBookmarkOffset(offset)
     local targetScroll = OffsetToScroll(frame, layout, safeOffset)
     if characterStart then
         local _, prefixHeight = MeasureBookmarkCharacterRow(frame, layout, chunk, characterStart)
-        targetScroll = CONTENT_PADDING_TOP + chunk.top + math.max(0, prefixHeight - layout.lineHeight)
+        local rowTop = chunk.top + math.max(0, prefixHeight - layout.lineHeight)
+        targetScroll = rowTop == 0 and 0 or CONTENT_PADDING_TOP + rowTop
     end
     self:ScrollReaderTo(targetScroll, true)
     return true

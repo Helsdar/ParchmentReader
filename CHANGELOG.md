@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.3.0 — 2026-11-05
+
+- Added **Leatherbound**, combining dark leather with pale paper, **Gray UI**, with native quest parchment, graphite panels, and red buttons, and **Forever**, with warm panels, gold frames, and native red/gold controls. Choose them in **Settings > Appearance**.
+- Apply appearances across the reader, editor, Quick Note, and settings. Browse all six appearance previews and keep independent sun/moon choices. Existing saved appearance selections are preserved.
+- Retired Hallow's End for this release. Active seasonal readers return to their previous ordinary appearance; your seasonal preference is retained for a future offer.
+- Added a one-time Forever appearance invitation on **WoW Forever** with **Enable now**, **Later**, and close actions. Forever activates only when you choose it.
+
+Existing books, collections, bookmarks, reading progress, settings, and unsaved editor drafts are preserved. No saved-data reset is required. One shared package includes every supported client manifest.
+
 ## 2.2.0 — 2026-10-29
 
 - Recover deleted saved books and Quick Notes for 30 days through **Settings > General > Maintenance > Open Trash**.

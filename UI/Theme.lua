@@ -145,13 +145,149 @@ Theme.palettes.HallowsEnd = {
     },
     shadow = {soft = {0, 0, 0, 0.24}, strong = {0, 0, 0, 0.68}},
 }
-Theme.names = {AzerothGlass = "Azeroth Glass", LightParchment = "Light Parchment", WarmParchment = "Warm Parchment", HallowsEnd = "Hallow's End"}
-Theme.order = {"AzerothGlass", "LightParchment", "WarmParchment"}
+
+
+Theme.palettes.Classic = {
+    bg = {
+        base = {0.13, 0.085, 0.055, 1}, surface = {0.94, 0.88, 0.75, 1},
+        sidebar = {0.10, 0.065, 0.045, 1}, control = {0.12, 0.095, 0.075, 1},
+        track = {0.035, 0.025, 0.02, 0.92}, popover = {0.105, 0.075, 0.055, 1},
+        popoverRow = {0.13, 0.085, 0.065, 1}, popoverAction = {0.20, 0.085, 0.075, 1},
+    },
+    border = {subtle = {0.53, 0.44, 0.29, 0.60}, elevated = {0.70, 0.59, 0.37, 0.90}},
+    accent = {gold = {0.87, 0.72, 0.42, 1}, goldDim = {0.76, 0.61, 0.35, 0.58}},
+    text = {
+        primary = {0.96, 0.90, 0.76, 1}, secondary = {0.85, 0.79, 0.67, 1},
+        muted = {0.68, 0.63, 0.53, 1},
+    },
+    paperText = {
+        primary = {0.16, 0.115, 0.075, 1}, secondary = {0.29, 0.23, 0.17, 1},
+        muted = {0.38, 0.30, 0.22, 1},
+    },
+    paperAccent = {gold = {0.43, 0.27, 0.12, 1}, goldDim = {0.43, 0.27, 0.12, 0.50}},
+    state = {
+        clear = {0, 0, 0, 0}, hover = {0.83, 0.68, 0.42, 0.10},
+        active = {0.36, 0.085, 0.075, 0.82}, danger = {0.94, 0.42, 0.33, 1},
+    },
+    shadow = {soft = {0, 0, 0, 0.26}, strong = {0, 0, 0, 0.72}},
+}
+Theme.palettes.QuestJournal = {
+    bg = {
+        base = {0.13, 0.14, 0.15, 1}, surface = {0.88, 0.77, 0.56, 1},
+        sidebar = {0.07, 0.08, 0.085, 1}, control = {0.10, 0.11, 0.12, 1},
+        track = {0.025, 0.03, 0.035, 1}, popover = {0.075, 0.085, 0.095, 1},
+        popoverRow = {0.10, 0.11, 0.12, 1}, popoverAction = {0.15, 0.14, 0.10, 1},
+    },
+    border = {subtle = {0.46, 0.48, 0.47, 0.85}, elevated = {0.70, 0.71, 0.66, 1}},
+    accent = {gold = {1, 0.82, 0.25, 1}, goldDim = {0.89, 0.65, 0.16, 0.65}},
+    text = {primary = {0.95, 0.91, 0.79, 1}, secondary = {0.84, 0.82, 0.74, 1}, muted = {0.62, 0.63, 0.60, 1}},
+    paperText = {primary = {0.055, 0.040, 0.025, 1}, secondary = {0.065, 0.050, 0.035, 1}, muted = {0.075, 0.060, 0.040, 1}},
+    paperAccent = {gold = {0.080, 0.050, 0.020, 1}, goldDim = {0.080, 0.050, 0.020, 0.55}},
+    state = {
+        clear = {0, 0, 0, 0}, hover = {1, 0.82, 0.25, 0.10},
+        active = {0.70, 0.48, 0.08, 0.22}, danger = {1, 0.72, 0.60, 1},
+    },
+    shadow = {soft = {0, 0, 0, 0.30}, strong = {0, 0, 0, 0.75}},
+}
+
+
+Theme.palettes.Forever = {
+    bg = {
+        base = {0.15, 0.095, 0.055, 1}, surface = {0.88, 0.77, 0.56, 1},
+        sidebar = {0.095, 0.060, 0.035, 1}, control = {0.13, 0.085, 0.045, 1},
+        track = {0.035, 0.022, 0.012, 1}, popover = {0.105, 0.068, 0.040, 1},
+        popoverRow = {0.14, 0.09, 0.05, 1}, popoverAction = {0.25, 0.055, 0.035, 1},
+    },
+    border = {subtle = {0.57, 0.40, 0.19, 0.85}, elevated = {0.79, 0.61, 0.30, 1}},
+    accent = {gold = {1, 0.82, 0.20, 1}, goldDim = {0.82, 0.61, 0.25, 0.70}},
+    text = {primary = {0.96, 0.91, 0.79, 1}, secondary = {0.86, 0.80, 0.68, 1}, muted = {0.67, 0.58, 0.44, 1}},
+    paperText = {primary = {0.055, 0.040, 0.025, 1}, secondary = {0.065, 0.050, 0.035, 1}, muted = {0.075, 0.060, 0.040, 1}},
+    paperAccent = {gold = {0.080, 0.050, 0.020, 1}, goldDim = {0.080, 0.050, 0.020, 0.55}},
+    state = {
+        clear = {0, 0, 0, 0}, hover = {1, 0.80, 0.30, 0.12},
+        active = {0.80, 0.55, 0.16, 0.25}, danger = {1, 0.64, 0.48, 1},
+    },
+    shadow = {soft = {0, 0, 0, 0.30}, strong = {0, 0, 0, 0.75}},
+}
+
+
+Theme.names = {AzerothGlass = "Azeroth Glass", LightParchment = "Light Parchment", WarmParchment = "Warm Parchment", Classic = "Leatherbound", QuestJournal = "Gray UI", Forever = "Forever", HallowsEnd = "Hallow's End"}
+Theme.order = {"AzerothGlass", "LightParchment", "WarmParchment", "Classic", "QuestJournal", "Forever"}
+Theme.skins = {
+    Classic = {chrome = "ClassicLeatherBC1", paper = "ClassicPaperBC1", trim = "ClassicTrim",
+        chromeOpacity = 0.72, paperOpacity = 0.96, cornerSize = 14,
+        rim = {{0.17, 0.16, 0.14, 1}, {0.59, 0.53, 0.40, 1}, {0.25, 0.19, 0.11, 1}}},
+    Forever = {chrome = "ClassicLeatherBC1", paper = "ClassicPaperBC1", nativeButtons = true,
+        actionOpacity = 0.98, actionColor = {0.30, 0.025, 0.015, 1}, actionInk = {1, 1, 1, 1},
+        titleInk = {1, 0.82, 0.20, 1}, chromeOpacity = 0.96, paperOpacity = 0.96,
+        hideCornerArtwork = true,
+        rim = {{0.16, 0.095, 0.035, 1}, {0.79, 0.61, 0.30, 1}, {0.34, 0.22, 0.09, 1}}},
+    QuestJournal = {paper = "ClassicPaperBC1", nativeButtons = true, actionOpacity = 0.96,
+        actionColor = {0.20, 0.022, 0.016, 1}, chromeColor = {0.07, 0.08, 0.085, 1},
+        chromeOpacity = 0.96, fallbackChromeOpacity = 0, paperOpacity = 0.96, hideCornerArtwork = true,
+        rim = {{0.08, 0.09, 0.10, 1}, {0.64, 0.66, 0.63, 1}, {0.26, 0.28, 0.29, 1}}},
+}
+local function NativeGray(red, green, blue)
+    return {path = "Interface\\Buttons\\GreyscaleRamp64", coords = {0.5 / 64, 63.5 / 64, 0.5 / 64, 63.5 / 64},
+        tint = {red, green, blue, 1}, sourceAlpha = 1}
+end
+Theme.skins.QuestJournal.nativeSurfaces = {
+    paper = {atlas = "QuestBG-Parchment", relativeCoords = {0.08, 0.92, 0.08, 0.92}, sourceAlpha = 1},
+    chrome = NativeGray(0.20, 0.21, 0.22),
+    sidebar = NativeGray(0.14, 0.15, 0.16),
+    control = NativeGray(0.12, 0.13, 0.14),
+    row = NativeGray(0.10, 0.11, 0.12),
+    popover = NativeGray(0.14, 0.15, 0.16),
+    popoverRow = NativeGray(0.12, 0.13, 0.14),
+    popoverAction = NativeGray(0.16, 0.17, 0.18),
+}
+
+
+
+Theme.skins.Forever.nativeSurfaces = {
+    paper = Theme.skins.QuestJournal.nativeSurfaces.paper,
+    chrome = {path = "Interface\\DialogFrame\\UI-DialogBox-Background", wrap = "REPEAT", tileSize = 128, sourceAlpha = 1},
+}
+Theme.skins.Forever.nativeButtonAtlas = "128-RedButton"
+Theme.skins.Forever.nativeControlAtlases = {
+    "common-search-border-left", "common-search-border-middle", "common-search-border-right",
+}
+Theme.skins.Forever.nativeFrame = {
+    TopLeftCorner = {atlas = "UI-Frame-DiamondMetal-CornerTopLeft"},
+    TopRightCorner = {atlas = "UI-Frame-DiamondMetal-CornerTopRight"},
+    BottomLeftCorner = {atlas = "UI-Frame-DiamondMetal-CornerBottomLeft"},
+    BottomRightCorner = {atlas = "UI-Frame-DiamondMetal-CornerBottomRight"},
+    TopEdge = {atlas = "_UI-Frame-DiamondMetal-EdgeTop"},
+    BottomEdge = {atlas = "_UI-Frame-DiamondMetal-EdgeBottom"},
+    LeftEdge = {atlas = "!UI-Frame-DiamondMetal-EdgeLeft"},
+    RightEdge = {atlas = "!UI-Frame-DiamondMetal-EdgeRight"},
+}
+Theme.classicButtonThemes = {QuestJournal = true, Forever = true}
+
+function Theme:UsesClassicButtons(value)
+    return self.classicButtonThemes[value == nil and self.paletteName or value] == true
+end
+
+function Theme:GetSkin(value)
+    return self.skins[value == nil and self.paletteName or value]
+end
+
+function Theme:IsHybrid(value)
+    return self:GetSkin(value) ~= nil
+end
+
+function Theme:UsesPaperInk(region)
+    return self:IsLight() or (self:IsHybrid() and self:IsPaperRegion(region))
+end
+
+function Theme:IsActionButton(button)
+    return button.pruiButtonSkinRole == "action" and button.pruiIdleBackgroundAlpha ~= 0
+end
 
 
 
 
-Theme.currentHoliday = {enabled = true, themeName = "HallowsEnd", seasonId = "hallows-end-2026"}
+Theme.currentHoliday = {enabled = false, themeName = "HallowsEnd", seasonId = "hallows-end-2026"}
 
 function Theme:GetAvailableHoliday()
     local event = self.currentHoliday
@@ -166,12 +302,14 @@ end
 
 function Theme:IsOrdinary(value)
     return value == "AzerothGlass" or value == "LightParchment" or value == "WarmParchment"
+        or (type(value) == "string" and self.skins[value] ~= nil)
 end
 
 function Theme:NormalizeSeasonalState(db)
 
     db.holidayAppearanceEnabled = db.holidayAppearanceEnabled ~= false
     db.themeName = self:NormalizeName(db.themeName)
+    if db.hallowsEndReturnTheme == "WoWClassic" then db.hallowsEndReturnTheme = "QuestJournal" end
     if db.themeName == "HallowsEnd" then
         local event = self:GetAvailableHoliday()
         if not self:IsOrdinary(db.hallowsEndReturnTheme) then db.hallowsEndReturnTheme = "AzerothGlass" end
@@ -193,6 +331,8 @@ end
 
 
 function Theme:NormalizeSlots(db)
+    if db.moonTheme == "WoWClassic" then db.moonTheme = "QuestJournal" end
+    if db.sunTheme == "WoWClassic" then db.sunTheme = "QuestJournal" end
     local moon = self:IsOrdinary(db.moonTheme) and db.moonTheme or "AzerothGlass"
     local sun = self:IsOrdinary(db.sunTheme) and db.sunTheme or "LightParchment"
     if moon == sun then sun = moon == "LightParchment" and "AzerothGlass" or "LightParchment" end
@@ -202,8 +342,9 @@ end
 
 function Theme:GetToggleTarget(db, current)
     local moon, sun = self:NormalizeSlots(db)
-    current = current or self.paletteName
+    current = self:NormalizeName(current or self.paletteName)
     if current == "HallowsEnd" then
+        if db.hallowsEndReturnTheme == "WoWClassic" then db.hallowsEndReturnTheme = "QuestJournal" end
         local target = self:IsOrdinary(db.hallowsEndReturnTheme) and db.hallowsEndReturnTheme or "AzerothGlass"
         return target, target == moon and "moon" or target == sun and "sun" or self:IsLight(target) and "sun" or "moon"
     end
@@ -214,6 +355,7 @@ function Theme:GetToggleTarget(db, current)
 end
 
 function Theme:NormalizeName(value)
+    if value == "WoWClassic" then return "QuestJournal" end
     if type(value) == "string" and self.palettes[value] then return value end
     return "AzerothGlass"
 end
@@ -224,6 +366,9 @@ Theme.textBindings = setmetatable({}, {__mode = "k"})
 Theme.textShadows = setmetatable({}, {__mode = "k"})
 Theme.paperSurfaces = setmetatable({}, {__mode = "k"})
 Theme.holidayBackgrounds = setmetatable({}, {__mode = "k"})
+Theme.classicSurfaces = setmetatable({}, {__mode = "k"})
+Theme.classicFrames = setmetatable({}, {__mode = "k"})
+Theme.skinButtons = setmetatable({}, {__mode = "k"})
 Theme.colorRoles = {}
 for _, palette in pairs(Theme.palettes) do
     for group, colors in pairs(palette) do
@@ -231,6 +376,44 @@ for _, palette in pairs(Theme.palettes) do
             Theme.colorRoles[color] = {group, name}
         end
     end
+end
+
+
+
+function Theme:IsPaperRegion(region)
+    for _ = 1, 32 do
+        if not region then return false end
+        if region.pruiInkSurface then return region.pruiInkSurface == "paper" end
+        region = region.GetParent and region:GetParent()
+    end
+    return false
+end
+
+function Theme:ResolveColor(region, color)
+    local role = self.colorRoles[color]
+    if not role then return color end
+    local skin = self:GetSkin()
+    if region.pruiWindowTitle and skin and skin.titleInk then return skin.titleInk end
+    if self:IsHybrid() and self:IsPaperRegion(region) then
+        local paper = role[1] == "text" and self.colors.paperText
+            or role[1] == "accent" and self.colors.paperAccent
+        if paper and paper[role[2]] then return paper[role[2]] end
+    end
+    if self:UsesClassicButtons() and role[1] == "text" and role[2] ~= "muted" then
+        local ancestor = region
+        for _ = 1, 12 do
+            if not ancestor then break end
+            if ancestor.pruiButtonSkinRole then
+                if self:IsActionButton(ancestor) then
+                    local skin = self:GetSkin()
+                    return skin and skin.actionInk or self.colors.accent.gold
+                end
+                break
+            end
+            ancestor = ancestor.GetParent and ancestor:GetParent()
+        end
+    end
+    return self:Get(role[1], role[2])
 end
 
 
@@ -252,7 +435,7 @@ function Theme:ApplyTextShadow(region, fontObject)
         shadow = {r, g, b, a, x, y}
         self.textShadows[region] = shadow
     end
-    if self:IsLight() then
+    if self:UsesPaperInk(region) then
         region:SetShadowColor(shadow[1], shadow[2], shadow[3], 0)
         region:SetShadowOffset(0, 0)
     else
@@ -319,8 +502,7 @@ function Theme:BindColor(region, method, color, alpha)
     local roles = self.bindings[region] or {}
     self.bindings[region] = roles
     roles[method] = {color = color, alpha = alpha}
-    local role = self.colorRoles[color]
-    local active = role and self:Get(role[1], role[2]) or color
+    local active = self:ResolveColor(region, color)
     self:ApplyBoundColor(region, method, active, alpha)
 end
 
@@ -343,13 +525,15 @@ function Theme:Repaint(refreshEditBoxes)
     end
     for region, methods in pairs(self.bindings) do
         for method, binding in pairs(methods) do
-            local role = self.colorRoles[binding.color]
-            local color = role and self:Get(role[1], role[2]) or binding.color
+            local color = self:ResolveColor(region, binding.color)
             self:ApplyBoundColor(region, method, color, binding.alpha)
         end
     end
     self:RefreshPaperSurfaces()
     self:RefreshHolidayBackgrounds()
+    for frame in pairs(self.classicSurfaces) do ParchmentReader.PRUI.RefreshClassicSurface(frame) end
+    for frame in pairs(self.classicFrames) do ParchmentReader.PRUI.RefreshClassicFrame(frame) end
+    for button in pairs(self.skinButtons) do ParchmentReader.PRUI.RefreshButtonBevel(button) end
     if refreshEditBoxes then self:ScheduleEditBoxInkRefresh() end
 end
 
@@ -374,8 +558,9 @@ function Theme:SetPalette(value)
 end
 
 function Theme:SearchMatchColor()
+    if self.paletteName == "QuestJournal" or self.paletteName == "Forever" then return "|cFF210603" end
     if self.paletteName == "HallowsEnd" then return "|cFFA6BD78" end
-    return self:IsLight() and "|cFF8A240C" or "|cFFFFD36A"
+    return (self:IsLight() or self:IsHybrid()) and "|cFF8A240C" or "|cFFFFD36A"
 end
 
 
@@ -385,14 +570,22 @@ function Theme:AdaptText(text)
     return (text:gsub("|cFFD1AD61", "|cFF83511F"))
 end
 
-function Theme:DiagnosticText(text)
-    if not self:IsLight() then return text end
+function Theme:DiagnosticText(text, region)
+    if not self:UsesPaperInk(region) then return text end
     local colors = {
         ["FFFFFF00"] = "83511F", ["FF00FF00"] = "245C27",
         ["FFFF9900"] = "83511F", ["FFFFAA00"] = "83511F",
         ["FF00FFFF"] = "20585E", ["FF00AAFF"] = "20585E", ["FFFF0000"] = "9E2117",
         ["FF33FF99"] = "245C27",
     }
+    if self.paletteName == "QuestJournal" or self.paletteName == "Forever" then
+        colors = {
+            ["FFFFFF00"] = "180D04", ["FF00FF00"] = "061206",
+            ["FFFF9900"] = "180D04", ["FFFFAA00"] = "180D04",
+            ["FF00FFFF"] = "061113", ["FF00AAFF"] = "061113", ["FFFF0000"] = "230703",
+            ["FF33FF99"] = "061206",
+        }
+    end
     return (text:gsub("|c(%x%x%x%x%x%x%x%x)", function(code)
         return colors[code:upper()] and "|cFF" .. colors[code:upper()] or "|c" .. code
     end))
@@ -437,6 +630,12 @@ PRUI.ADDON_FRAME_LEVELS = {
 function PRUI.SetAddonFrameLayer(frame, level, strata)
     frame:SetFrameStrata(strata or PRUI.ADDON_FRAME_STRATA)
     frame:SetFrameLevel(level or PRUI.ADDON_FRAME_LEVELS.READER)
+    if frame.pruiClassicDecoration then
+        frame.pruiClassicDecoration:SetFrameLevel(frame:GetFrameLevel() + 4)
+    end
+    if frame.pruiForeverDecoration then
+        frame.pruiForeverDecoration:SetFrameLevel(frame:GetFrameLevel() + 4)
+    end
 end
 
 function PRUI.SetFontStringColor(fontString, color)
@@ -514,6 +713,593 @@ local function AddSoftShadow(frame)
     frame.pruiShadow = shadow
 end
 
+local CLASSIC_ASSETS = "Interface\\AddOns\\ParchmentReader\\Assets\\"
+local NATIVE_BUTTON_ASSETS = "Interface\\Buttons\\UI-Panel-Button-"
+
+local function Finite(value)
+    return type(value) == "number" and value == value and value > -math.huge and value < math.huge
+end
+
+local function Rectangle(left, right, top, bottom)
+    return Finite(left) and Finite(right) and Finite(top) and Finite(bottom)
+        and left >= 0 and right <= 1 and top >= 0 and bottom <= 1 and left < right and top < bottom
+end
+
+local function ClientAsset(value)
+    return (type(value) == "string" and value:find("%S") ~= nil)
+        or (Finite(value) and value > 0 and value == math.floor(value))
+end
+
+local function ResolveClientSource(source)
+    if not source.atlas then return source.path, source.coords, source.path and "path:" .. source.path end
+    if type(C_Texture) ~= "table" or type(C_Texture.GetAtlasInfo) ~= "function" then return end
+    local ok, info = pcall(C_Texture.GetAtlasInfo, source.atlas)
+    if not ok or type(info) ~= "table" or not Finite(info.width) or info.width <= 0
+        or not Finite(info.height) or info.height <= 0 or info.tilesHorizontally or info.tilesVertically
+        or info.isRotated or info.rotated then return end
+    local left, right, top, bottom = info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord
+    if not Rectangle(left, right, top, bottom) then return end
+    local asset = ClientAsset(info.file) and info.file or ClientAsset(info.filename) and info.filename
+    local crop = source.relativeCoords or {0, 1, 0, 1}
+    if not asset or not Rectangle(unpack(crop)) then return end
+    local coords = {left + (right - left) * crop[1], left + (right - left) * crop[2],
+        top + (bottom - top) * crop[3], top + (bottom - top) * crop[4]}
+
+
+    local key = "atlas:" .. source.atlas .. ":" .. tostring(asset) .. ":" .. info.width .. ":" .. info.height
+        .. ":" .. table.concat(coords, ":")
+    return asset, coords, key
+end
+
+
+
+
+function PRUI.ApplyClientMaterial(texture, descriptor, failures, width, height)
+    if not descriptor then return false end
+    failures = failures or {}
+    for _, source in ipairs(descriptor.sources or {descriptor}) do
+        local asset, coords, key = ResolveClientSource(source)
+        if key and not failures[key] then
+            local loaded = true
+            if texture.pruiClientMaterialKey ~= key then
+                texture.pruiClientMaterialKey = nil
+                texture.pruiClientMaterialInvalidated = true
+                loaded = texture:SetTexture(asset, source.wrap or "CLAMP", source.wrap or "CLAMP") ~= false
+            end
+            if loaded then
+                texture.pruiClientMaterialKey = key
+                texture.pruiClientMaterialInvalidated = nil
+                if coords then texture:SetTexCoord(unpack(coords))
+                elseif source.tileSize and width and height then
+                    texture:SetTexCoord(0, width / source.tileSize, 0, height / source.tileSize)
+                else texture:SetTexCoord(0, 1, 0, 1) end
+                texture:SetVertexColor(unpack(source.tint or {1, 1, 1, 1}))
+                texture:SetBlendMode("BLEND")
+                return true, source, key
+            end
+            failures[key] = true
+        end
+    end
+    return false
+end
+
+function PRUI.GetClientSurface(skin, kind, frame)
+    if not skin or not skin.nativeSurfaces then return end
+    if kind == "paper" then return skin.nativeSurfaces.paper end
+    if frame and Theme:IsActionButton(frame) then return end
+    local role = frame and (frame.pruiButtonSkinRole or frame.pruiSurfaceRole) or "base"
+    if role == "icon" then role = "control" end
+    return skin.nativeSurfaces[role] or skin.nativeSurfaces.chrome
+end
+
+function PRUI.ApplySkinPreview(texture, skin, kind, role)
+    if not skin then return end
+
+
+    texture.pruiClientMaterialKey = nil
+    texture.pruiClientMaterialFailures = texture.pruiClientMaterialFailures or {}
+    local native = PRUI.ApplyClientMaterial(texture,
+        PRUI.GetClientSurface(skin, kind, {pruiSurfaceRole = role}), texture.pruiClientMaterialFailures)
+    if not native then
+        local asset = kind == "paper" and skin.paper or skin.chrome
+        if asset then texture:SetTexture(CLASSIC_ASSETS .. asset)
+        else texture:SetColorTexture(unpack(skin.chromeColor)) end
+        texture:SetTexCoord(0, 1, 0, 1)
+        texture:SetVertexColor(1, 1, 1, 1)
+        texture:SetBlendMode("BLEND")
+        texture.pruiClientMaterialKey, texture.pruiClientMaterialInvalidated = nil, nil
+    end
+    texture:SetAlpha(1)
+    return native
+end
+
+local function NativeFaceCoordinates(top, bottom)
+    return {
+        left = {8.5 / 128, 12 / 128, top / 32, bottom / 32},
+        middle = {12 / 128, 68 / 128, top / 32, bottom / 32},
+        right = {68 / 128, 71.5 / 128, top / 32, bottom / 32},
+    }
+end
+
+
+
+
+PRUI.nativeButtonFace = {
+    states = {
+        Up = NativeFaceCoordinates(5.5, 17.5),
+        Down = NativeFaceCoordinates(7.5, 18.5),
+        Disabled = NativeFaceCoordinates(5.5, 17.5),
+    },
+    highlight = {8.5 / 128, 71.5 / 128, 5.5 / 32, 17.5 / 32},
+    capWidth = 4,
+}
+
+local function HideNativeButtonFace(frame)
+    frame.pruiNativeFaceActive = nil
+    frame.pruiNativeFaceState = nil
+    for _, texture in ipairs(frame.pruiNativeFace or {}) do texture:Hide() end
+    if frame.pruiNativeHighlight then frame.pruiNativeHighlight:Hide() end
+end
+
+local function LoadNativeButtonTexture(texture, path)
+    if texture.pruiNativePath == path then return true end
+
+
+    if texture:SetTexture(path) == false then return false end
+    texture.pruiNativePath = path
+    return true
+end
+
+function PRUI.RefreshNativeButtonFace(frame, state, alpha, hovered)
+    local coords = PRUI.nativeButtonFace.states[state]
+    if not coords or frame.pruiNativeFaceFailed then
+        HideNativeButtonFace(frame)
+        return false
+    end
+    if not frame.pruiNativeFace then
+        frame.pruiNativeFace = {}
+        for index = 1, 3 do
+            local texture = frame:CreateTexture(nil, "BACKGROUND", nil, -5)
+            texture:SetVertexColor(1, 1, 1, 1)
+            frame.pruiNativeFace[index] = texture
+        end
+        local highlight = frame:CreateTexture(nil, "BACKGROUND", nil, -4)
+        highlight:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1)
+        highlight:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, 1)
+        highlight:SetBlendMode("ADD")
+        frame.pruiNativeHighlight = highlight
+    end
+    local path = NATIVE_BUTTON_ASSETS .. state
+    for _, texture in ipairs(frame.pruiNativeFace) do
+        if not LoadNativeButtonTexture(texture, path) then
+            frame.pruiNativeFaceFailed = true
+            HideNativeButtonFace(frame)
+            return false
+        end
+    end
+    if hovered and not LoadNativeButtonTexture(frame.pruiNativeHighlight, NATIVE_BUTTON_ASSETS .. "Highlight") then
+        frame.pruiNativeFaceFailed = true
+        HideNativeButtonFace(frame)
+        return false
+    end
+    local width = math.max(1, (frame:GetWidth() or 1) - 2)
+    local cap = math.min(PRUI.nativeButtonFace.capWidth, math.max(0, (width - 4) / 2))
+    local left, middle, right = unpack(frame.pruiNativeFace)
+    left:ClearAllPoints()
+    left:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1)
+    left:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 1)
+    left:SetWidth(math.max(0.01, cap))
+    right:ClearAllPoints()
+    right:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1)
+    right:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, 1)
+    right:SetWidth(math.max(0.01, cap))
+    middle:ClearAllPoints()
+    middle:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
+    middle:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT", 0, 0)
+    for index, name in ipairs({"left", "middle", "right"}) do
+        local texture = frame.pruiNativeFace[index]
+        texture:SetTexCoord(unpack(coords[name]))
+        texture:SetAlpha(alpha)
+        texture:SetShown(index == 2 or cap > 0)
+    end
+    frame.pruiNativeHighlight:SetTexCoord(unpack(PRUI.nativeButtonFace.highlight))
+    frame.pruiNativeHighlight:SetAlpha(0.14 * alpha)
+    frame.pruiNativeHighlight:SetShown(hovered == true)
+    frame.pruiNativeFaceActive = true
+    frame.pruiNativeFaceState = state
+    return true
+end
+
+local function NativeAtlasInfo(name)
+    if type(C_Texture) ~= "table" or type(C_Texture.GetAtlasInfo) ~= "function" then return end
+    local ok, info = pcall(C_Texture.GetAtlasInfo, name)
+    if not ok or type(info) ~= "table" or not Finite(info.width) or info.width <= 0
+        or not Finite(info.height) or info.height <= 0 or info.isRotated or info.rotated
+        or not Rectangle(info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord) then return end
+    return info
+end
+
+local function HideForeverButton(frame)
+    frame.pruiForeverFaceActive = nil
+    for _, texture in ipairs(frame.pruiForeverFace or {}) do texture:Hide() end
+    if frame.pruiForeverHighlight then frame.pruiForeverHighlight:Hide() end
+end
+
+
+
+function PRUI.RefreshSkinButtonFace(frame, state, alpha, hovered, skin)
+    local base = skin and skin.nativeButtonAtlas
+    local control = not base and skin and skin.nativeControlAtlases
+    if not base and not control then
+        HideForeverButton(frame)
+        return PRUI.RefreshNativeButtonFace(frame, state, alpha, hovered)
+    end
+    HideNativeButtonFace(frame)
+    local suffix = state == "Down" and "-Pressed" or state == "Disabled" and "-Disabled" or ""
+    local names = control or {base .. "-Left" .. suffix, "_" .. base .. "-Center" .. suffix, base .. "-Right" .. suffix}
+    local info = {}
+    for index, name in ipairs(names) do
+        info[index] = NativeAtlasInfo(name)
+        if not info[index] then HideForeverButton(frame); return false end
+    end
+    if hovered and not NativeAtlasInfo(base .. "-Highlight") then HideForeverButton(frame); return false end
+    frame.pruiForeverAtlasFailures = frame.pruiForeverAtlasFailures or {}
+    for _, name in ipairs(names) do
+        if frame.pruiForeverAtlasFailures[name] then HideForeverButton(frame); return false end
+    end
+    if not frame.pruiForeverFace then
+        frame.pruiForeverFace = {}
+        for index = 1, 3 do
+            frame.pruiForeverFace[index] = frame:CreateTexture(nil, "BACKGROUND", nil, -5)
+        end
+        local highlight = frame:CreateTexture(nil, "BACKGROUND", nil, -4)
+        highlight:SetAllPoints()
+        highlight:SetBlendMode("ADD")
+        frame.pruiForeverHighlight = highlight
+    end
+    local function Atlas(texture, name)
+        if frame.pruiForeverAtlasFailures[name] then return false end
+        local ok, result = pcall(texture.SetAtlas, texture, name, false)
+        if not ok or result == false then frame.pruiForeverAtlasFailures[name] = true; return false end
+        local info = NativeAtlasInfo(name)
+        texture:SetHorizTile(info and info.tilesHorizontally == true)
+        texture:SetVertTile(info and info.tilesVertically == true)
+        texture:SetVertexColor(1, 1, 1, 1)
+        return true
+    end
+    for index, texture in ipairs(frame.pruiForeverFace) do
+        if not Atlas(texture, names[index]) then HideForeverButton(frame); return false end
+    end
+    if hovered and not Atlas(frame.pruiForeverHighlight, base .. "-Highlight") then HideForeverButton(frame); return false end
+    local width, height = math.max(1, frame:GetWidth()), math.max(1, frame:GetHeight())
+
+
+
+
+    local outsetX = base and math.min(1, width * .09) or 0
+    local outsetY = base and math.min(2, height * .09) or 0
+    width, height = width + 2 * outsetX, height + 2 * outsetY
+    local leftWidth, rightWidth = info[1].width * height / info[1].height, info[3].width * height / info[3].height
+    local total = leftWidth + rightWidth
+
+
+    local capScale = math.min(1, width / total)
+    local left, center, right = unpack(frame.pruiForeverFace)
+    left:ClearAllPoints()
+    left:SetPoint("TOPLEFT", frame, "TOPLEFT", -outsetX, outsetY)
+    left:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", -outsetX, -outsetY)
+    left:SetWidth(leftWidth * capScale)
+    right:ClearAllPoints()
+    right:SetPoint("TOPRIGHT", frame, "TOPRIGHT", outsetX, outsetY)
+    right:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", outsetX, -outsetY)
+    right:SetWidth(rightWidth * capScale)
+    center:ClearAllPoints(); center:SetPoint("TOPLEFT", left, "TOPRIGHT"); center:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT")
+    left:SetTexCoord(0, capScale, 0, 1)
+    center:SetTexCoord(0, 1, 0, 1)
+    right:SetTexCoord(1 - capScale, 1, 0, 1)
+    for _, texture in ipairs(frame.pruiForeverFace) do texture:SetAlpha(alpha); texture:Show() end
+    center:SetShown(width > total)
+    frame.pruiForeverHighlight:ClearAllPoints()
+    frame.pruiForeverHighlight:SetPoint("TOPLEFT", frame, "TOPLEFT", -outsetX, outsetY)
+    frame.pruiForeverHighlight:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", outsetX, -outsetY)
+    frame.pruiForeverHighlight:SetAlpha(0.14 * alpha)
+    frame.pruiForeverHighlight:SetShown(hovered == true)
+    frame.pruiForeverFaceActive, frame.pruiForeverFaceState = true, state
+    return true
+end
+
+function PRUI.RefreshForeverFrame(frame)
+    local skin = Theme:GetSkin()
+    local layout = skin and skin.nativeFrame
+    local decoration = frame.pruiForeverDecoration
+    if not layout or type(NineSliceUtil) ~= "table" or type(NineSliceUtil.ApplyLayout) ~= "function" then
+        if decoration then decoration:Hide() end
+        return false
+    end
+    local keys, scale = {}, 1
+    for piece, descriptor in pairs(layout) do
+        local info = NativeAtlasInfo(descriptor.atlas)
+        if not info then if decoration then decoration:Hide() end; return false end
+
+
+        if piece:find("Corner", 1, true) then scale = math.min(scale, 8 / info.width, 8 / info.height)
+        elseif piece == "TopEdge" or piece == "BottomEdge" then scale = math.min(scale, 2 / info.height)
+        else scale = math.min(scale, 2 / info.width) end
+        keys[#keys + 1] = piece .. ":" .. descriptor.atlas .. ":" .. tostring(info.file or info.filename)
+            .. ":" .. info.width .. ":" .. info.height .. ":" .. info.leftTexCoord .. ":" .. info.rightTexCoord
+            .. ":" .. info.topTexCoord .. ":" .. info.bottomTexCoord
+    end
+    table.sort(keys)
+    local key = table.concat(keys, "|")
+    if frame.pruiForeverFrameFailed == key then if decoration then decoration:Hide() end; return false end
+    if not decoration then
+        decoration = CreateFrame("Frame", nil, frame)
+        decoration:EnableMouse(false)
+        frame.pruiForeverDecoration = decoration
+    end
+
+
+
+    decoration:ClearAllPoints()
+    decoration:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+    decoration:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+    decoration:SetFrameLevel(frame:GetFrameLevel() + 4)
+    decoration:SetAlpha(frame.pruiClassicAlpha or 1)
+    if frame.pruiForeverFrameKey ~= key then
+        local checked = {}
+        for piece, descriptor in pairs(layout) do checked[piece] = descriptor end
+
+
+        checked.setupPieceVisualsFunction = function(_, texture, _, descriptor)
+            local info = NativeAtlasInfo(descriptor.atlas)
+            assert(info, "Native frame atlas became unavailable")
+            texture:SetHorizTile(info.tilesHorizontally == true)
+            texture:SetVertTile(info.tilesVertically == true)
+            local loaded, result = pcall(texture.SetAtlas, texture, descriptor.atlas, false)
+            assert(loaded and result ~= false, "Native frame texture unavailable")
+            texture:SetSize(info.width * scale, info.height * scale)
+            texture:SetVertexColor(1, 1, 1, 1)
+        end
+        local ok = pcall(NineSliceUtil.ApplyLayout, decoration, checked)
+        if not ok then
+            frame.pruiForeverFrameFailed = key
+            decoration:Hide()
+            return false
+        end
+        frame.pruiForeverFrameKey = key
+    end
+    decoration:Show()
+    return true
+end
+
+local function RefreshForeverOutline(frame)
+    local hide = frame.pruiForeverFaceActive == true and (Theme:IsActionButton(frame)
+        or (frame.pruiInputFrame and not frame.pruiInputOutlineFeedback))
+    local saved = frame.pruiForeverOutlineVisibility
+    if hide then
+        saved = saved or {}
+        frame.pruiForeverOutlineVisibility = saved
+        for _, texture in pairs(frame.pruiBorder or {}) do
+            if saved[texture] == nil then saved[texture] = texture:IsShown() end
+            texture:Hide()
+        end
+    elseif saved then
+
+
+        for texture, shown in pairs(saved) do texture:SetShown(shown) end
+        frame.pruiForeverOutlineVisibility = nil
+    end
+end
+
+function PRUI.RefreshClassicSurface(frame)
+    local kind = Theme.classicSurfaces[frame]
+    local skin = Theme:GetSkin()
+    local shown = skin ~= nil and kind ~= nil
+    if frame.pruiClassicOnlyPaper then
+        frame.pruiBackground:SetShown(shown)
+        for _, edge in pairs(frame.pruiBorder or {}) do edge:SetShown(shown) end
+    end
+    local texture = frame.pruiClassicMaterial
+    if shown and not texture then
+
+        texture = frame:CreateTexture(nil, "BACKGROUND", nil, -5)
+        texture:SetAllPoints()
+        texture:SetVertexColor(1, 1, 1, 1)
+        frame.pruiClassicMaterial = texture
+    end
+    if not texture then return end
+    local nativeMaterial, nativeSource = false, nil
+    if shown then
+        local action = kind ~= "paper" and Theme:IsActionButton(frame)
+        local asset = kind == "paper" and skin.paper
+            or (action and skin.action or skin.chrome)
+        if action and skin.nativeButtonAtlas then asset = nil end
+        frame.pruiClientMaterialFailures = frame.pruiClientMaterialFailures or {}
+        local descriptor = PRUI.GetClientSurface(skin, kind, frame)
+        nativeMaterial, nativeSource = PRUI.ApplyClientMaterial(texture, descriptor, frame.pruiClientMaterialFailures,
+            frame:GetWidth(), frame:GetHeight())
+        if not nativeMaterial then
+            if not asset then
+                texture:SetColorTexture(unpack(action and skin.actionColor or skin.chromeColor))
+            elseif frame.pruiClassicMaterialAsset ~= asset or frame.pruiNativeMaterialActive
+                or texture.pruiClientMaterialKey or texture.pruiClientMaterialInvalidated then
+                if kind == "paper" then texture:SetTexture(CLASSIC_ASSETS .. asset)
+                else texture:SetTexture(CLASSIC_ASSETS .. asset, "REPEAT", "REPEAT") end
+            end
+            texture.pruiClientMaterialKey = nil
+            texture.pruiClientMaterialInvalidated = nil
+            texture:SetVertexColor(1, 1, 1, 1)
+            texture:SetBlendMode("BLEND")
+            if kind == "paper" then texture:SetTexCoord(0, 1, 0, 1) end
+        end
+        frame.pruiClassicMaterialAsset = asset
+    end
+    frame.pruiNativeMaterialActive = nativeMaterial or nil
+    if shown and not nativeMaterial and kind ~= "paper" and frame.pruiClassicMaterialAsset then
+
+        local tile = frame.pruiClassicMaterialAsset == skin.action and (skin.actionTileSize or 128) or 256
+        texture:SetTexCoord(0, math.max(1, frame:GetWidth() or 1) / tile,
+            0, math.max(1, frame:GetHeight() or 1) / tile)
+    end
+    local alpha = frame.pruiClassicAlpha
+    if alpha == nil and frame.pruiBackground and frame.pruiBackground.GetAlpha then
+        alpha = frame.pruiBackground:GetAlpha()
+    end
+    alpha = alpha or 1
+    if shown then
+
+
+        frame.pruiClassicAlpha = alpha
+        local opacity = kind == "paper" and skin.paperOpacity
+            or (Theme:IsActionButton(frame) and skin.actionOpacity
+                or (not nativeMaterial and skin.fallbackChromeOpacity or skin.chromeOpacity))
+        local materialAlpha = opacity * alpha
+        local coverage = materialAlpha * (nativeSource and nativeSource.sourceAlpha or 1)
+        frame.pruiBackground:SetAlpha(coverage >= 1 and 0 or (alpha - coverage) / (1 - coverage))
+        texture:SetAlpha(materialAlpha)
+        frame.pruiClassicPainted = true
+    elseif frame.pruiClassicPainted then
+        frame.pruiBackground:SetAlpha(frame.pruiHolidayTransparent and 0 or alpha)
+        frame.pruiClassicPainted = nil
+        frame.pruiClassicAlpha = nil
+    end
+    local visible = shown and (not frame.pruiBackground or frame.pruiBackground:IsShown() ~= false)
+    local native = false
+    if visible and skin.nativeControlAtlases and frame.pruiInputFrame then
+        native = PRUI.RefreshSkinButtonFace(frame, "Up", skin.chromeOpacity * alpha, false,
+            {nativeControlAtlases = skin.nativeControlAtlases})
+    elseif visible and skin.nativeButtons and Theme:IsActionButton(frame) then
+        local enabled = not frame.IsEnabled or frame:IsEnabled()
+        local state = not enabled and "Disabled" or (frame.pruiPressed or frame.pruiSelected) and "Down" or "Up"
+        native = PRUI.RefreshSkinButtonFace(frame, state, skin.actionOpacity * alpha,
+            enabled and frame.pruiHovered == true and frame.pruiPressed ~= true, skin)
+    else
+        PRUI.RefreshSkinButtonFace(frame)
+    end
+    if frame.pruiState then frame.pruiState:SetShown(not native or frame.pruiInputFrame == true) end
+    texture:SetShown(visible and not native)
+    RefreshForeverOutline(frame)
+    if frame.pruiShadow then PRUI.RefreshForeverFrame(frame) end
+end
+
+function PRUI.SetClassicSurfaceAlpha(frame, alpha)
+    frame.pruiClassicAlpha = (Theme:IsHybrid() or frame.pruiClassicPainted) and alpha or nil
+    PRUI.RefreshClassicSurface(frame)
+    for _, texture in ipairs(frame.pruiClassicTrim or {}) do texture:SetAlpha(alpha) end
+    if frame.pruiForeverDecoration then frame.pruiForeverDecoration:SetAlpha(alpha) end
+end
+
+function PRUI.RegisterClassicSurface(frame, kind)
+    if not Theme.classicSurfaces[frame] then
+        frame:HookScript("OnSizeChanged", PRUI.RefreshClassicSurface)
+    end
+    Theme.classicSurfaces[frame] = kind
+    frame.pruiInkSurface = kind == "paper" and "paper" or "chrome"
+    PRUI.RefreshClassicSurface(frame)
+end
+
+function PRUI.RefreshClassicFrame(frame)
+    local skin = Theme:GetSkin()
+    local native = PRUI.RefreshForeverFrame(frame)
+    local shown = skin ~= nil and not native
+    if shown and not frame.pruiClassicTrim then
+        local trim = {}
+
+
+        local decoration = CreateFrame("Frame", nil, frame)
+        decoration:SetAllPoints()
+        decoration:SetFrameLevel(frame:GetFrameLevel() + 4)
+        decoration:EnableMouse(false)
+        frame.pruiClassicDecoration = decoration
+        for _, side in ipairs({"TOP", "BOTTOM", "LEFT", "RIGHT"}) do
+            for inset = 0, 2 do
+                local line = decoration:CreateTexture(nil, "BORDER")
+                line.pruiRimInset = inset
+                if side == "TOP" or side == "BOTTOM" then
+                    local y = side == "TOP" and -inset or inset
+                    line:SetPoint(side .. "LEFT", decoration, side .. "LEFT", inset, y)
+                    line:SetPoint(side .. "RIGHT", decoration, side .. "RIGHT", -inset, y)
+                    line:SetHeight(1)
+                else
+                    local x = side == "LEFT" and inset or -inset
+                    line:SetPoint("TOP" .. side, decoration, "TOP" .. side, x, -inset)
+                    line:SetPoint("BOTTOM" .. side, decoration, "BOTTOM" .. side, x, inset)
+                    line:SetWidth(1)
+                end
+                trim[#trim + 1] = line
+            end
+        end
+        for _, corner in ipairs({"TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT"}) do
+            local texture = decoration:CreateTexture(nil, "OVERLAY", nil, 7)
+            texture.pruiCorner = true
+            texture:SetPoint(corner, frame, corner, 0, 0)
+            local right, bottom = corner:find("RIGHT"), corner:find("BOTTOM")
+            texture:SetTexCoord(right and 0.5 or 0, right and 0 or 0.5,
+                bottom and 0.5 or 0, bottom and 0 or 0.5)
+            trim[#trim + 1] = texture
+        end
+        frame.pruiClassicTrim = trim
+    end
+    if frame.pruiClassicDecoration then frame.pruiClassicDecoration:SetFrameLevel(frame:GetFrameLevel() + 4) end
+    for _, texture in ipairs(frame.pruiClassicTrim or {}) do
+        local visible = shown and not (skin.hideCornerArtwork and texture.pruiCorner)
+        if visible then
+            if texture.pruiCorner then
+                texture:SetTexture(CLASSIC_ASSETS .. skin.trim)
+                texture:SetSize(skin.cornerSize, skin.cornerSize)
+            else
+                texture:SetColorTexture(unpack(skin.rim[texture.pruiRimInset + 1]))
+            end
+        end
+        texture:SetShown(visible)
+        texture:SetAlpha(frame.pruiClassicAlpha or 1)
+    end
+end
+
+function PRUI.ApplyClassicFrame(frame)
+    Theme.classicFrames[frame] = true
+    PRUI.RefreshClassicFrame(frame)
+end
+
+
+
+function PRUI.RefreshButtonBevel(button)
+    local shown = Theme:UsesClassicButtons()
+        and (not button.pruiBackground or button.pruiBackground:IsShown() ~= false)
+    local row = button.pruiButtonSkinRole == "row" or button.pruiIdleBackgroundAlpha == 0
+    if shown and not row and not button.pruiButtonBevel then
+        local bevel = {}
+        for _, side in ipairs({"TOP", "BOTTOM", "LEFT", "RIGHT"}) do
+            local inset = 1
+            local line = button:CreateTexture(nil, "BORDER", nil, 1)
+            line.pruiBevelLight = side == "TOP" or side == "LEFT"
+            line.pruiBevelInset = inset
+            if side == "TOP" or side == "BOTTOM" then
+                local y = side == "TOP" and -inset or inset
+                line:SetPoint(side .. "LEFT", button, side .. "LEFT", 3, y)
+                line:SetPoint(side .. "RIGHT", button, side .. "RIGHT", -3, y)
+                line:SetHeight(1)
+            else
+                local x = side == "LEFT" and inset or -inset
+                line:SetPoint("TOP" .. side, button, "TOP" .. side, x, -3)
+                line:SetPoint("BOTTOM" .. side, button, "BOTTOM" .. side, x, 3)
+                line:SetWidth(1)
+            end
+            bevel[#bevel + 1] = line
+        end
+        button.pruiButtonBevel = bevel
+    end
+    for _, line in ipairs(button.pruiButtonBevel or {}) do
+        local light = line.pruiBevelLight ~= (button.pruiPressed == true)
+        local value = light and 0.31 or 0.055
+        if Theme.paletteName == "Forever" then
+            line:SetColorTexture(light and 0.76 or 0.19, light and 0.54 or 0.10, light and 0.24 or 0.035, 1)
+        else line:SetColorTexture(value, value * 1.02, value, 1) end
+        line:SetAlpha((button.pruiClassicAlpha or 1) * 0.55)
+        line:SetShown(shown and not row and not button.pruiForeverFaceActive)
+    end
+end
+
 function PRUI.ApplySurface(frame, options)
     options = options or {}
     if not frame.pruiBackground then
@@ -526,6 +1312,9 @@ function PRUI.ApplySurface(frame, options)
     if options.shadow and not frame.pruiShadow then
         AddSoftShadow(frame)
     end
+    local role = Theme.colorRoles[options.color or Theme:Get("bg", "base")]
+    frame.pruiSurfaceRole = role and role[1] == "bg" and role[2] or "base"
+    PRUI.RegisterClassicSurface(frame, role and role[1] == "bg" and role[2] == "surface" and "paper" or "chrome")
     return frame
 end
 
@@ -558,6 +1347,7 @@ end
 
 
 function PRUI.RefreshPaperSurface(frame)
+    if frame.pruiClassicOnlyPaper then return end
     local warm = Theme.paletteName == "WarmParchment"
     if warm and not frame.pruiPaperTexture then
         local texture = frame:CreateTexture(nil, "BACKGROUND", nil, -6)
@@ -575,7 +1365,10 @@ function PRUI.RefreshPaperSurface(frame)
     if frame.pruiPaperEdgesEnabled then PRUI.AddPaperEdges(frame) end
 end
 
-function PRUI.ApplyPaperSurface(frame, edges)
+function PRUI.ApplyPaperSurface(frame, edges, classicOnly)
+    frame.pruiInkSurface = "paper"
+    frame.pruiClassicOnlyPaper = classicOnly == true
+    if classicOnly then PRUI.RefreshClassicSurface(frame) end
     frame.pruiPaperEdgesEnabled = edges == true
     Theme.paperSurfaces[frame] = true
     PRUI.RefreshPaperSurface(frame)
@@ -806,6 +1599,8 @@ function PRUI.RefreshButton(button)
     SetTextureColor(button.pruiState, stateColor)
     button.pruiBackground:SetAlpha(
         emphasized and 1 or (button.pruiIdleBackgroundAlpha or 1))
+    PRUI.SetClassicSurfaceAlpha(button, emphasized and 1 or (button.pruiIdleBackgroundAlpha or 1))
+    PRUI.RefreshButtonBevel(button)
     PRUI.SetBorderColor(button, borderColor)
     Theme:BindColor(button.label, "SetTextColor", textColor)
     if button.icon then
@@ -849,11 +1644,14 @@ function PRUI.Button(parent, text, options)
     options = options or {}
     local button = CreateFrame("Button", options.name, parent)
     button:SetSize(options.width or 100, options.height or 24)
+    button.pruiButtonSkinRole = options.skinRole or "action"
+    Theme.skinButtons[button] = true
 
-    local background = button:CreateTexture(nil, "BACKGROUND")
+    local background = button:CreateTexture(nil, "BACKGROUND", nil, -7)
     background:SetAllPoints()
     SetTextureColor(background, Theme:Get("bg", "control"))
     button.pruiBackground = background
+    PRUI.RegisterClassicSurface(button, "chrome")
 
     local stateTexture = button:CreateTexture(nil, "BACKGROUND", nil, 1)
     stateTexture:SetAllPoints()
@@ -902,6 +1700,16 @@ function PRUI.Button(parent, text, options)
     end)
     button:SetScript("OnEnable", PRUI.RefreshButton)
     button:SetScript("OnDisable", PRUI.RefreshButton)
+    button:HookScript("OnHide", function(self)
+        if self.pruiNativeFace or self.pruiForeverFace then
+            self.pruiHovered, self.pruiPressed = false, false
+            HideNativeButtonFace(self)
+            HideForeverButton(self)
+        end
+    end)
+    button:HookScript("OnShow", function(self)
+        if self.pruiNativeFace or self.pruiForeverFace then PRUI.RefreshButton(self) end
+    end)
     PRUI.RefreshButton(button)
     return button
 end
@@ -910,6 +1718,7 @@ function PRUI.IconButton(parent, icon, tooltip, options)
     options = options or {}
     options.width = options.width or 24
     options.height = options.height or 24
+    options.skinRole = options.skinRole or "icon"
     local button = PRUI.Button(parent, options.iconText or "", options)
 
     if icon then
@@ -994,6 +1803,7 @@ function PRUI.Window(parent, options)
         shadow = options.shadow ~= false,
     })
     frame:SetClampedToScreen(true)
+    PRUI.ApplyClassicFrame(frame)
 
     local topbar = PRUI.Panel(frame, {color = Theme:Get("bg", "sidebar")})
     topbar:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1)
@@ -1007,6 +1817,7 @@ function PRUI.Window(parent, options)
         height = 24,
         iconText = "×",
         fontObject = "GameFontNormal",
+        skinRole = "action",
     })
     closeButton:SetPoint("RIGHT", topbar, "RIGHT", -4, 0)
     closeButton:SetScript("OnClick", function()
@@ -1021,6 +1832,7 @@ function PRUI.Window(parent, options)
     title:SetWordWrap(false)
     title:SetMaxLines(1)
     title:SetText(options.title or "")
+    title.pruiWindowTitle = true
     PRUI.SetFontStringColor(title, Theme:Get("text", "primary"))
     frame.title = title
 
@@ -1039,12 +1851,16 @@ local function RefreshEditBox(editBox)
         borderColor = Theme:Get("border", "subtle")
     end
     PRUI.SetFontStringColor(editBox, textColor)
+    editBox.pruiContainer.pruiInputOutlineFeedback = (editBox:HasFocus() or editBox.pruiInvalid) and true or false
     PRUI.SetBorderColor(editBox.pruiContainer, borderColor)
     editBox.pruiContainer.pruiBackground:SetAlpha(
         editBox.pruiContainer.pruiHolidayTransparent and 0 or
         (editBox:HasFocus() or editBox.pruiInvalid)
             and 1
             or (editBox.pruiIdleBackgroundAlpha or 1))
+    PRUI.SetClassicSurfaceAlpha(editBox.pruiContainer,
+        editBox.pruiContainer.pruiHolidayTransparent and 0 or
+        (editBox:HasFocus() or editBox.pruiInvalid) and 1 or (editBox.pruiIdleBackgroundAlpha or 1))
     editBox.pruiContainer:SetAlpha(enabled and 1 or 0.62)
 end
 
@@ -1073,6 +1889,7 @@ function PRUI.EditBox(parent, options)
         options.insetTop or 5,
         options.insetBottom or 5)
     editBox.pruiContainer = container
+    container.pruiInputFrame = true
 
     editBox:HookScript("OnEditFocusGained", RefreshEditBox)
     editBox:HookScript("OnEditFocusLost", RefreshEditBox)
@@ -1290,8 +2107,11 @@ function PRUI.Dropdown(parent, options)
         width = width,
         height = height,
         justifyH = options.justifyH,
+        skinRole = "control",
     })
 
+    dropdown.pruiInputFrame = true
+    PRUI.RefreshClassicSurface(dropdown)
     dropdown.pruiChevronColor = Theme:Get("accent", "gold")
     local arrow = AddButtonChevron(dropdown, false)
     arrow:SetPoint("RIGHT", dropdown.pruiContent, "RIGHT", -9, 0)
@@ -1363,7 +2183,7 @@ function PRUI.Dropdown(parent, options)
     end
 
     for index = 1, maxRows do
-        local row = PRUI.Button(popover, "", {height = rowHeight, justifyH = "LEFT"})
+        local row = PRUI.Button(popover, "", {height = rowHeight, justifyH = "LEFT", skinRole = "row"})
         if options.rowBorder == false then
             PRUI.SetButtonBorderColor(row, Theme:Get("state", "clear"))
             PRUI.SetButtonIdleBackgroundAlpha(row, 0)
@@ -1760,9 +2580,10 @@ function ParchmentReader:SetTheme(value)
     value = Theme:NormalizeName(value)
     if value == "HallowsEnd" and not self:CanUseHolidayAppearance() then return false end
     if self.DismissHolidayDiscovery then self:DismissHolidayDiscovery() end
+    if self.DismissForeverDiscovery then self:DismissForeverDiscovery() end
     if value == "HallowsEnd" then
         if ParchmentReaderDB.themeName ~= "HallowsEnd" then
-            local previous = ParchmentReaderDB.themeName
+            local previous = Theme:NormalizeName(ParchmentReaderDB.themeName)
             ParchmentReaderDB.hallowsEndReturnTheme = Theme:IsOrdinary(previous) and previous or "AzerothGlass"
         end
         ParchmentReaderDB.hallowsEndActiveSeason = Theme:GetAvailableHoliday().seasonId
@@ -1796,6 +2617,7 @@ function ParchmentReader:SetTheme(value)
 end
 
 function ParchmentReader:SetThemeSlot(slot, value)
+    if value == "WoWClassic" then value = "QuestJournal" end
     if (slot ~= "moon" and slot ~= "sun") or not Theme:IsOrdinary(value) then return false end
     Theme:NormalizeSlots(ParchmentReaderDB)
     local key, opposite = slot .. "Theme", slot == "moon" and "sunTheme" or "moonTheme"
