@@ -137,6 +137,7 @@ function ParchmentReader:ShowRecentContextMenu(anchor)
         menu.clearButton = PRUI.Button(menu, L["Clear Reading History"] .. "...", {
             height = 24,
             justifyH = "LEFT",
+            skinRole = "row",
         })
         menu.clearButton:SetPoint("TOPLEFT", menu, "TOPLEFT", 5, -5)
         menu.clearButton:SetScript("OnClick", function()
@@ -205,10 +206,13 @@ local function GetCollectionNameDialog()
     input:SetFontObject("GameFontNormal")
     input:SetTextInsets(8, 8, 0, 0)
     SetFontStringColor(input, Theme:Get("text", "primary"))
-    local inputBackground = input:CreateTexture(nil, "BACKGROUND")
+    local inputBackground = input:CreateTexture(nil, "BACKGROUND", nil, -7)
     inputBackground:SetAllPoints()
     local controlColor = Theme:Get("bg", "control")
     Theme:BindColor(inputBackground, "SetColorTexture", controlColor)
+    input.pruiBackground = inputBackground
+    input.pruiSurfaceRole = "control"
+    PRUI.RegisterClassicSurface(input, "chrome")
     PRUI.AddBorder(input, Theme:Get("border", "subtle"))
     dialog.input = input
 
@@ -404,6 +408,7 @@ local function GetCollectionContextMenu()
         width = 216,
         height = 23,
         justifyH = "LEFT",
+        skinRole = "row",
     })
     menu.renameButton:SetPoint("TOPLEFT", menu, "TOPLEFT", 5, -5)
     menu.renameButton.label:ClearAllPoints()
@@ -414,6 +419,7 @@ local function GetCollectionContextMenu()
         width = 216,
         height = 23,
         justifyH = "LEFT",
+        skinRole = "row",
     })
     menu.deleteButton:SetPoint("TOPLEFT", menu.renameButton, "BOTTOMLEFT", 0, 0)
     menu.deleteButton.label:ClearAllPoints()
@@ -598,6 +604,7 @@ local function CreateCollectionPopover(readerFrame)
         local row = PRUI.Button(popover, "", {
             height = COLLECTION_ROW_HEIGHT,
             justifyH = "LEFT",
+            skinRole = "row",
         })
         row:SetPoint("TOPLEFT", popover, "TOPLEFT", 5, -(5 + (index - 1) * COLLECTION_ROW_HEIGHT))
         row:SetPoint("TOPRIGHT", popover, "TOPRIGHT", -5, -(5 + (index - 1) * COLLECTION_ROW_HEIGHT))
@@ -962,6 +969,7 @@ local function GetBookMovePopover()
         local row = PRUI.Button(popover, "", {
             height = BOOK_MOVE_ROW_HEIGHT,
             justifyH = "LEFT",
+            skinRole = "row",
         })
         row:SetPoint(
             "TOPLEFT",
@@ -1066,6 +1074,7 @@ local function GetBookContextMenu()
         width = 196,
         height = 23,
         justifyH = "LEFT",
+        skinRole = "row",
     })
     menu.favoriteButton:SetPoint("TOPLEFT", menu, "TOPLEFT", 5, -5)
     menu.favoriteButton.label:ClearAllPoints()
@@ -1078,6 +1087,7 @@ local function GetBookContextMenu()
         width = 196,
         height = 23,
         justifyH = "LEFT",
+        skinRole = "row",
     })
     menu.editButton:SetPoint("TOPLEFT", menu.favoriteButton, "BOTTOMLEFT", 0, 0)
     menu.editButton.label:ClearAllPoints()
@@ -1088,6 +1098,7 @@ local function GetBookContextMenu()
         width = 196,
         height = 23,
         justifyH = "LEFT",
+        skinRole = "row",
     })
     menu.moveButton:SetPoint("TOPLEFT", menu.editButton, "BOTTOMLEFT", 0, 0)
     menu.moveButton.label:ClearAllPoints()
@@ -1100,7 +1111,7 @@ local function GetBookContextMenu()
     separator:SetHeight(1)
     Theme:BindColor(separator, "SetColorTexture", Theme:Get("border", "subtle"))
     menu.trashButton = PRUI.Button(menu, L["Move to Trash"], {
-        width = 196, height = 23, justifyH = "LEFT",
+        width = 196, height = 23, justifyH = "LEFT", skinRole = "row",
     })
     menu.trashButton:SetPoint("TOPLEFT", menu.moveButton, "BOTTOMLEFT", 0, -9)
 
@@ -1460,6 +1471,7 @@ local function CreateBookmarkRow(popover, index)
     local jumpButton = PRUI.Button(row, "", {
         height = BOOKMARK_ROW_HEIGHT - 2,
         justifyH = "LEFT",
+        skinRole = "row",
     })
     jumpButton:SetPoint("LEFT", row, "LEFT", 0, 0)
     jumpButton:SetPoint("RIGHT", editButton, "LEFT", -4, 0)
@@ -1951,7 +1963,8 @@ local READER_PROGRESS_HOVER_HEIGHT = 6
 local READER_PROGRESS_HIT_HEIGHT = 12
 
 local function SetReaderBorderAppearance(surface, transparent, focused)
-    local lightTransparent = transparent and Theme:IsLight()
+    local lightTransparent = transparent and (Theme:IsLight()
+        or (Theme:IsHybrid() and surface.pruiInkSurface == "paper"))
     PRUI.SetBorderColor(surface,
         focused and Theme:Get("accent", "goldDim") or Theme:Get("border", "subtle"),
         lightTransparent and (focused and 0.80 or LIGHT_TRANSPARENT_BORDER_ALPHA) or nil)
@@ -2026,8 +2039,9 @@ local function SetReaderSurfaceTransparency(surface, transparent, customAmount)
     local backgroundAlpha = transparent and Theme:TransparentBackgroundAlpha() or 1
     local frame = ParchmentReaderFrame
     local readingPage = frame and surface == frame.contentSurface
-    if transparent and Theme:IsLight() and frame
-        and (readingPage or surface == frame.topbar or surface == frame.footer) then
+    if transparent and frame and ((Theme:IsLight()
+        and (readingPage or surface == frame.topbar or surface == frame.footer))
+        or (Theme:IsHybrid() and readingPage)) then
 
         backgroundAlpha = LIGHT_TRANSPARENT_PAGE_ALPHA
     end
@@ -2039,9 +2053,10 @@ local function SetReaderSurfaceTransparency(surface, transparent, customAmount)
 
 
 
-        local shellHidden = transparent and (Theme:IsLight() or customAmount ~= nil)
+        local shellHidden = transparent and (Theme:IsLight() or Theme:IsHybrid() or customAmount ~= nil)
             and surface == ParchmentReaderFrame
         surface.pruiBackground:SetAlpha(shellHidden and 0 or backgroundAlpha)
+        PRUI.SetClassicSurfaceAlpha(surface, shellHidden and 0 or backgroundAlpha)
     end
     PRUI.SetPaperSurfaceAlpha(surface, backgroundAlpha)
     SetSeasonalSurfaceAlpha(surface, backgroundAlpha)
@@ -2150,8 +2165,7 @@ local function MeasureHolidayDiscoveryText(text, fallback)
     return fallback
 end
 
-local function LayoutHolidayDiscovery(frame)
-    local hint = frame.holidayDiscoveryHint
+local function LayoutDiscoveryCard(frame, hint)
     if not hint then return false end
     local frameWidth, frameHeight = frame:GetWidth(), frame:GetHeight()
     if not frameWidth or not frameHeight or frameWidth <= 34 or frameHeight <= 0 then
@@ -2169,12 +2183,22 @@ local function LayoutHolidayDiscovery(frame)
     hint.label:SetHeight(0)
     local bodyHeight = MeasureHolidayDiscoveryText(hint.label, 36)
     hint.label:SetHeight(bodyHeight)
+    local actionHeight, actionWidth = 24, width - 24
+    local stacked = false
+    if hint.laterButton then
+
+
+        local first = hint.actionButton.label:GetStringWidth()
+        local second = hint.laterButton.label:GetStringWidth()
+        stacked = first + second + 32 + 6 > actionWidth
+        if stacked then actionHeight = 52 end
+    end
     local padding, bodyGap, actionGap = 12, 6, 10
     local maxHeight = frameHeight - Theme.metrics.topbarHeight - 6
-    local height = padding * 2 + headerHeight + bodyGap + bodyHeight + actionGap + 24
+    local height = padding * 2 + headerHeight + bodyGap + bodyHeight + actionGap + actionHeight
     if height > maxHeight then
         padding, bodyGap, actionGap = 8, 4, 6
-        height = padding * 2 + headerHeight + bodyGap + bodyHeight + actionGap + 24
+        height = padding * 2 + headerHeight + bodyGap + bodyHeight + actionGap + actionHeight
     end
     hint.title:ClearAllPoints()
     hint.title:SetPoint("TOPLEFT", hint, "TOPLEFT", 52, -padding - (headerHeight - titleHeight) / 2)
@@ -2184,11 +2208,26 @@ local function LayoutHolidayDiscovery(frame)
     hint.label:ClearAllPoints()
     hint.label:SetPoint("TOPLEFT", hint, "TOPLEFT", 12, -bodyY)
     local actionY = bodyY + bodyHeight + actionGap
-    hint.actionButton:SetSize(width - 24, 24)
+    if hint.laterButton and not stacked then
+        local first = hint.actionButton.label:GetStringWidth() + 16
+        local second = hint.laterButton.label:GetStringWidth() + 16
+        actionWidth = first + (actionWidth - 6 - first - second) / 2
+    end
+    hint.actionButton:SetSize(actionWidth, 24)
     hint.actionButton:ClearAllPoints()
     hint.actionButton:SetPoint("TOPLEFT", hint, "TOPLEFT", 12, -actionY)
+    if hint.laterButton then
+        hint.laterButton:SetSize(stacked and width - 24 or width - 30 - actionWidth, 24)
+        hint.laterButton:ClearAllPoints()
+        if stacked then hint.laterButton:SetPoint("TOPLEFT", hint.actionButton, "BOTTOMLEFT", 0, -4)
+        else hint.laterButton:SetPoint("TOPLEFT", hint.actionButton, "TOPRIGHT", 6, 0) end
+    end
     hint:SetHeight(height)
     return true
+end
+
+local function LayoutHolidayDiscovery(frame)
+    return LayoutDiscoveryCard(frame, frame.holidayDiscoveryHint)
 end
 
 local function StyleHolidayDiscoveryButton(button, background, ink)
@@ -2296,6 +2335,116 @@ function ParchmentReader:InitializeHolidayDiscovery(frame)
         ParchmentReader:ShowHolidayDiscovery(frame)
     end)
     frame:HookScript("OnHide", function() ParchmentReader:DismissHolidayDiscovery(frame) end)
+end
+
+
+
+
+local FOREVER_DISCOVERY_ID = "forever-appearance-2026"
+
+function ParchmentReader:IsForeverDiscoveryClient()
+
+
+    if type(WOW_PROJECT_CAMELOT) == "number" then
+        return WOW_PROJECT_ID == WOW_PROJECT_CAMELOT
+    end
+    if WOW_PROJECT_ID ~= nil then return false end
+    if type(GetBuildInfo) ~= "function" then return false end
+    local _, _, _, interface = GetBuildInfo()
+    return tonumber(interface) == 16001
+end
+
+function ParchmentReader:DismissForeverDiscovery(frame)
+    frame = frame or ParchmentReaderFrame
+    if frame and frame.foreverDiscoveryHint then frame.foreverDiscoveryHint:Hide() end
+end
+
+local function CanShowForeverDiscovery(reader, frame, preview)
+    return frame and frame.pruiReaderOpened and frame:IsVisible()
+        and Theme.paletteName ~= "Forever"
+        and (preview or reader:IsForeverDiscoveryClient())
+end
+
+local function ShowForeverDiscovery(reader, frame, preview)
+    frame = frame or ParchmentReaderFrame
+    if not CanShowForeverDiscovery(reader, frame, preview)
+        or (not preview and ParchmentReaderDB.foreverAppearanceSeenNews == FOREVER_DISCOVERY_ID) then return end
+    local hint = frame.foreverDiscoveryHint
+    if not hint then
+        local colors = HOLIDAY_DISCOVERY_COLORS
+        hint = PRUI.Panel(frame, {color = colors.background, borderColor = colors.border})
+        hint:SetPoint("TOPLEFT", frame.hallowsEndButton, "BOTTOMLEFT", 0, -6)
+        hint:SetFrameLevel(frame:GetFrameLevel() + 20)
+        hint:EnableMouse(false)
+        local icon = hint:CreateTexture(nil, "ARTWORK")
+        icon:SetTexture("Interface\\AddOns\\ParchmentReader\\Assets\\LibraryBook")
+        icon:SetSize(32, 32)
+        hint.icon = icon
+        local title = hint:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        title:SetJustifyH("LEFT")
+        title:SetWordWrap(true)
+        title:SetText(L["Forever appearance"])
+        SetFontStringColor(title, colors.title)
+        hint.title = title
+        local text = hint:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        text:SetJustifyH("LEFT")
+        text:SetWordWrap(true)
+        text:SetText(L["Try the Forever design, inspired by WoW Forever. Change it anytime in Settings > Appearance."])
+        SetFontStringColor(text, colors.ink)
+        hint.label = text
+        local action = PRUI.Button(hint, L["Enable now"], {height = 24})
+        action:EnableMouse(true)
+        StyleHolidayDiscoveryButton(action, colors.button, colors.buttonInk)
+        action:SetScript("OnClick", function()
+
+
+            if frame.foreverDiscoveryHint == hint and hint:IsVisible()
+                and CanShowForeverDiscovery(reader, frame, hint.pruiPreview) then
+                reader:SetTheme("Forever")
+            end
+        end)
+        hint.actionButton = action
+        local later = PRUI.Button(hint, L["Later"], {height = 24})
+        later:EnableMouse(true)
+        StyleHolidayDiscoveryButton(later, colors.button, colors.buttonInk)
+        later:SetScript("OnClick", function() hint:Hide() end)
+        hint.laterButton = later
+        local close = PRUI.IconButton(hint, nil, L["Close"], {width = 24, height = 24,
+            iconText = "×", fontObject = "GameFontNormal"})
+        close:SetPoint("TOPRIGHT", hint, "TOPRIGHT", -4, -4)
+        close:EnableMouse(true)
+        StyleHolidayDiscoveryButton(close, colors.background, colors.ink)
+        close:SetScript("OnClick", function() hint:Hide() end)
+        hint.closeButton = close
+        frame.foreverDiscoveryHint = hint
+        frame:HookScript("OnSizeChanged", function(owner) LayoutDiscoveryCard(owner, hint) end)
+    end
+    if not LayoutDiscoveryCard(frame, hint) then return end
+    reader:DismissHolidayDiscovery(frame)
+    hint.pruiPreview = preview == true
+    hint:Show()
+    if not preview and hint:IsVisible() then ParchmentReaderDB.foreverAppearanceSeenNews = FOREVER_DISCOVERY_ID end
+end
+
+function ParchmentReader:ShowForeverDiscovery(frame)
+    ShowForeverDiscovery(self, frame, false)
+end
+
+
+
+function ParchmentReader:PreviewForeverDiscovery()
+    ShowForeverDiscovery(self, ParchmentReaderFrame, true)
+end
+
+function ParchmentReader:InitializeForeverDiscovery(frame)
+    frame:HookScript("OnShow", function() ParchmentReader:ShowForeverDiscovery(frame) end)
+    frame:HookScript("OnHide", function() ParchmentReader:DismissForeverDiscovery(frame) end)
+end
+
+
+
+function ParchmentReader:PreviewClassicDiscovery()
+    self:PreviewForeverDiscovery()
 end
 
 local function CompareNormalizedBookTitles(
@@ -2613,6 +2762,7 @@ local function CreateFloatingLauncherMenu(launcher)
         width = 216,
         height = 24,
         justifyH = "LEFT",
+        skinRole = "row",
     })
     lockButton:SetPoint("TOPLEFT", menu, "TOPLEFT", 5, -5)
     lockButton:SetScript("OnClick", function()
@@ -2627,6 +2777,7 @@ local function CreateFloatingLauncherMenu(launcher)
         width = 216,
         height = 24,
         justifyH = "LEFT",
+        skinRole = "row",
     })
     settingsButton:SetPoint("TOPLEFT", lockButton, "BOTTOMLEFT", 0, 0)
     settingsButton:SetScript("OnClick", function()
@@ -2638,6 +2789,7 @@ local function CreateFloatingLauncherMenu(launcher)
         width = 216,
         height = 24,
         justifyH = "LEFT",
+        skinRole = "row",
     })
     closeButton:SetPoint("TOPLEFT", settingsButton, "BOTTOMLEFT", 0, 0)
     closeButton:SetScript("OnClick", function()
@@ -2826,6 +2978,7 @@ function ParchmentReader:CreateReaderFrame()
         shadow = true,
     })
     frame:SetSize(width, height)
+    PRUI.ApplyClassicFrame(frame)
     frame:SetClampedToScreen(true)
     self:ApplyReaderPosition()
     PRUI.SetAddonFrameLayer(frame, PRUI.ADDON_FRAME_LEVELS.READER)
@@ -2864,6 +3017,9 @@ function ParchmentReader:CreateReaderFrame()
 
 
     brandSlot.pruiBackground:Hide()
+    Theme.classicSurfaces[brandSlot] = nil
+    PRUI.RefreshClassicSurface(brandSlot)
+    PRUI.RefreshButtonBevel(brandSlot)
     for _, border in pairs(brandSlot.pruiBorder) do border:Hide() end
     brandSlot:SetScript("OnClick", function()
         ParchmentReader:ToggleHallowsEnd()
@@ -2880,6 +3036,7 @@ function ParchmentReader:CreateReaderFrame()
     local addonLabel = topbar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     addonLabel:SetPoint("LEFT", brandSlot, "RIGHT", 3, 0)
     addonLabel:SetText(L["Parchment Reader"])
+    addonLabel.pruiWindowTitle = true
     SetFontStringColor(addonLabel, Theme:Get("text", "secondary"))
 
     local pinButton = PRUI.IconButton(
@@ -2890,6 +3047,7 @@ function ParchmentReader:CreateReaderFrame()
             width = 24,
             height = 24,
             iconSize = 16,
+            skinRole = "action",
         })
     pinButton:SetPoint("LEFT", addonLabel, "RIGHT", 7, 0)
     pinButton:SetScript("OnClick", function()
@@ -2905,6 +3063,7 @@ function ParchmentReader:CreateReaderFrame()
         height = 24,
         iconText = "×",
         fontObject = "GameFontNormal",
+        skinRole = "action",
     })
     closeButton:SetPoint("RIGHT", topbar, "RIGHT", -4, 0)
     closeButton:SetScript("OnClick", function()
@@ -2956,6 +3115,7 @@ function ParchmentReader:CreateReaderFrame()
     frame.themeButton = themeButton
 
     ParchmentReader:InitializeHolidayDiscovery(frame)
+    ParchmentReader:InitializeForeverDiscovery(frame)
     ParchmentReader:RefreshThemeButton(frame)
 
     local helpButton = PRUI.IconButton(topbar, nil, L["Keyboard Help"], {
@@ -2988,6 +3148,7 @@ function ParchmentReader:CreateReaderFrame()
 
     frame.title = titleArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     frame.title:SetAllPoints()
+    frame.title.pruiWindowTitle = true
     frame.title:SetJustifyH("CENTER")
     frame.title:SetWordWrap(false)
     frame.title:SetMaxLines(1)
@@ -3029,6 +3190,7 @@ function ParchmentReader:CreateReaderFrame()
     local collectionSelector = PRUI.Button(sidebar, L["Collections"], {
         height = 24,
         justifyH = "LEFT",
+        skinRole = "control",
     })
     collectionSelector:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 82, -32)
     collectionSelector:SetPoint("TOPRIGHT", sidebar, "TOPRIGHT", -4, -32)
@@ -3385,13 +3547,13 @@ function ParchmentReader:CreateReaderFrame()
         contentSurface,
         "TOPLEFT",
         metrics.contentInsetX,
-        -metrics.contentInsetY)
+        0)
     contentScroll:SetPoint(
         "BOTTOMRIGHT",
         contentSurface,
         "BOTTOMRIGHT",
         -metrics.contentInsetX,
-        metrics.contentInsetY)
+        0)
     contentScroll:EnableMouseWheel(true)
     contentScroll:SetClipsChildren(true)
 
@@ -3457,6 +3619,7 @@ function ParchmentReader:CreateReaderFrame()
         width = 28,
         height = 22,
         iconText = "<",
+        skinRole = "action",
     })
     previousButton:SetPoint("LEFT", navigation, "LEFT", 0, 0)
     previousButton:SetScript("OnClick", function()
@@ -3469,6 +3632,7 @@ function ParchmentReader:CreateReaderFrame()
         width = 28,
         height = 22,
         iconText = ">",
+        skinRole = "action",
     })
     nextButton:SetPoint("RIGHT", navigation, "RIGHT", 0, 0)
     nextButton:SetScript("OnClick", function()
@@ -3626,6 +3790,7 @@ function ParchmentReader:CreateReaderFrame()
     end)
 
     footer:SetScript("OnSizeChanged", function(_, footerWidth)
+        PRUI.RefreshClassicSurface(footer)
         navigation:SetWidth(math.max(180, math.min(380, footerWidth - 68)))
     end)
 
@@ -3680,6 +3845,7 @@ function ParchmentReader:CreateReaderFrame()
     end
 
     frame:SetScript("OnSizeChanged", function()
+        PRUI.RefreshClassicSurface(frame)
         if frame.bookmarkPopover:IsShown() then
             for _, row in ipairs(frame.bookmarkPopover.rows) do
                 if row.renaming then
@@ -3832,6 +3998,7 @@ function ParchmentReader:RefreshBookList()
                 button = PRUI.Button(frame.bookListScroll, "", {
                     height = buttonHeight,
                     justifyH = "LEFT",
+                    skinRole = "row",
                 })
                 button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
                 button.label:ClearAllPoints()

@@ -304,7 +304,7 @@ function ParchmentReader:CreateTrashFrame()
         slider:SetValue((frame.offset or 0) - delta)
     end)
     for index = 1, ROW_COUNT do
-        local row = PRUI.Button(list, "", {width = 208, height = ROW_HEIGHT, justifyH = "LEFT"})
+        local row = PRUI.Button(list, "", {width = 208, height = ROW_HEIGHT, justifyH = "LEFT", skinRole = "row"})
         QuietButton(row)
         row:SetPoint("TOPLEFT", list, "TOPLEFT", 0, -(index - 1) * ROW_HEIGHT)
         row.label:ClearAllPoints()
@@ -377,7 +377,12 @@ function ParchmentReader:CreateTrashFrame()
     frame.previewMetadata:SetPoint("TOPRIGHT", frame.previewTitle, "BOTTOMRIGHT", 0, -6)
     frame.previewMetadata:SetHeight(16)
     frame.previewMetadata:SetWordWrap(false)
-    local scroll = CreateFrame("ScrollFrame", "ParchmentReaderTrashPreviewScroll", frame, "UIPanelScrollFrameTemplate")
+    local previewSurface = PRUI.Panel(frame, {color = Theme:Get("bg", "surface")})
+    previewSurface:SetPoint("TOPLEFT", frame, "TOPLEFT", 236, -126)
+    previewSurface:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -16, 86)
+    PRUI.ApplyPaperSurface(previewSurface, false, true)
+    frame.previewSurface = previewSurface
+    local scroll = CreateFrame("ScrollFrame", "ParchmentReaderTrashPreviewScroll", previewSurface, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 240, -132)
     scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -34, 92)
     scroll:SetClipsChildren(true)
@@ -441,7 +446,7 @@ function ParchmentReader:CreateTrashFrame()
     frame.emptyButton:SetScript("OnClick", function() Confirm(frame, "all") end)
     PRUI.AttachTooltip(frame.emptyButton, L["Empty Trash"])
     frame.populatedControls = {retention, list, frame.countLabel, frame.paneDivider,
-        frame.previewTitle, frame.previewMetadata, scroll, frame.restoreButton,
+        frame.previewTitle, frame.previewMetadata, previewSurface, scroll, frame.restoreButton,
         frame.deleteButton, frame.emptyButton}
     frame:HookScript("OnHide", function()
         frame.session = frame.session + 1

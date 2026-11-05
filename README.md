@@ -38,11 +38,17 @@ resizable window.
   live 0–100% slider and a Transparent until hovered checkbox. Text keeps its
   opacity; at high transparency in a light theme, use Azeroth Glass or enable
   Transparent until hovered to keep reading comfortable.
-- Choose Azeroth Glass, Light Parchment, or Warm Parchment, and assign the
-  sun/moon theme switch independently. Themes update open windows immediately.
-- Choose Hallow's End appearance across the reader, editor, Quick
-  Note, and settings. A pumpkin control returns to the previous ordinary theme;
-  Holiday appearance in Settings controls availability.
+- Choose Azeroth Glass, Light Parchment, Warm Parchment, Leatherbound, Gray UI, or Forever,
+  and assign the sun/moon switch independently. Leatherbound combines dark leather
+  with pale paper; Gray UI uses native quest parchment, graphite panels and red
+  buttons. Forever adds warm panels, gold frames and native red/gold controls.
+  Click an appearance preview or page through choices without applying
+  them. Themes update open windows immediately.
+- Seasonal appearances are offered by the addon release. Hallow's End is now
+  retired, restoring the previous ordinary theme while keeping your seasonal
+  preference for its return.
+- On WoW Forever, a one-time Forever appearance invitation offers **Enable now** or
+  **Later**. You can also choose Forever in **Settings > Appearance**.
 - Discover seasonal appearance through a localized invitation, with improved
   collection scrollbar dragging and clearer list-row separators.
 - Find settings in Reading, Appearance, Controls, and General, with a live font
@@ -56,15 +62,19 @@ resizable window.
 - Mists of Pandaria Classic
 - Burning Crusade Classic Anniversary
 - Classic Era, Hardcore, and Season of Discovery
-- WoW Forever Beta 1.60.1 (Interface 16001)
+- WoW Forever 1.60.1 (Interface 16001)
 
 All supported clients share one package. World of Warcraft automatically selects
 the appropriate manifest. On CurseForge, choose the file tagged for your client;
 Forever is published as a separate platform file containing the same addon.
 
-The WoW Forever Beta manifest supports client
-1.60.1.70205 (Interface 16001), using the native `_Camelot` suffix. Its loader
-and API diagnostic passed on Classic Beta PvP. The owner confirmed all six
+The Forever package retains the native `_Camelot` manifest suffix confirmed in
+the original Beta. The local installation audit on 2026-11-04 found client
+1.60.1.70755 in `_forever_`; the existing Interface 16001 manifest target remains
+unchanged for that patch. This records the installed build, not a new in-game check.
+
+The original Forever Beta loader and API diagnostic passed on client
+1.60.1.70205 (Interface 16001), Classic Beta PvP. The owner confirmed all six
 focused addon game checks passed there on 2026-10-03, including persistence
 after reload and a full client restart. The separate CurseForge 2.0.0 Forever
 file was owner-confirmed Approved on 2026-10-03. The original GitHub 2.0.0
@@ -76,13 +86,14 @@ client checks for this bounded change were waived by the owner.
 
 ## Downloads
 
-Release **2.2.0** adds a shared 30-day Trash for saved books and Quick Notes.
-Open **Settings > General > Maintenance > Open Trash** to inspect or restore
-records with their saved dates, bookmarks, reading position, and Favorite.
-Permanent deletion and Empty Trash ask for confirmation. Entries expire after
-30 days, including time offline. Existing books, collections, bookmarks,
-reading progress, settings, and separate unsaved editor drafts are preserved.
-All supported clients remain in the shared package.
+The latest published release, **2.3.0**, adds the **Leatherbound**, **Gray UI**,
+and **Forever** appearances, available in **Settings > Appearance** with paged
+previews of all six choices and independent sun/moon assignments.
+Hallow's End is retired for this release; active seasonal readers return to
+their previous ordinary appearance. WoW Forever offers a one-time Forever
+appearance invitation that applies only when you choose it. Existing books,
+collections, bookmarks, reading progress, settings, and unsaved editor drafts
+are preserved. All supported clients remain in the shared package.
 
 - [CurseForge](https://www.curseforge.com/wow/addons/parchment-reader)
 - [Wago Addons](https://addons.wago.io/addons/parchment-reader)
@@ -102,8 +113,8 @@ World of Warcraft\_retail_\Interface\AddOns\ParchmentReader\ParchmentReader.toc
 ```
 
 Use `_classic_`, `_anniversary_`, or `_classic_era_` instead of `_retail_` for
-the corresponding Classic client. For WoW Forever Beta,
-use `_classic_beta_` and keep `ParchmentReader_Camelot.toc` alongside the base
+the corresponding Classic client. For WoW Forever,
+use `_forever_` and keep `ParchmentReader_Camelot.toc` alongside the base
 manifest.
 
 ## Getting started
@@ -138,11 +149,12 @@ manifest.
 - Open **Keyboard Help** in the reader or editor to see available shortcuts.
 - In Appearance, choose **Custom — adjust transparency** to show the slider
   and **Transparent until hovered** option.
-- Use the pumpkin to try Hallow's End and return
-  to your previous ordinary theme. Settings > Appearance > Holiday appearance
-  controls whether seasonal appearance is available without selecting it.
+- Choose **Forever** in **Settings > Appearance**, or use **Enable now** in the
+  WoW Forever invitation. **Later** dismisses that news without changing your
+  design; it does not repeat on the next open or reload.
+- Hallow's End is retired in this update. Seasonal controls return when a future
+  release offers an event; your saved preference and ordinary theme are retained.
   Availability is supplied by the addon release; it does not follow the calendar.
-  A seasonal invitation appears once per season when you explicitly open Reader.
 
 ## Commands
 
@@ -186,6 +198,11 @@ reading progress, and settings are preserved; no saved-data reset is required.
 Version 2.2.0 adds a shared Trash for deleted saved books and Quick Notes.
 Restoring retains their saved metadata; records expire 30 days after deletion.
 Unsaved editor drafts remain separate and do not expire.
+
+Version 2.3.0 preserves books, collections, bookmarks, reading progress,
+settings, and unsaved editor drafts. New appearances and news do not reset data
+or change the sun/moon assignments. Hallow's End retirement restores the saved
+ordinary appearance while retaining the seasonal preference.
 
 ## License
 

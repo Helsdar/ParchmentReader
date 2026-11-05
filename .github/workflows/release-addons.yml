@@ -138,6 +138,9 @@ jobs:
               ParchmentReader/Assets/HallowsEndBackdropBC1.blp \
               ParchmentReader/Assets/HallowsEndQuickNoteBC1.blp \
               ParchmentReader/Assets/HallowsEndSettingsBC1.blp \
+              ParchmentReader/Assets/ClassicLeatherBC1.blp \
+              ParchmentReader/Assets/ClassicPaperBC1.blp \
+              ParchmentReader/Assets/ClassicTrim.tga \
               ParchmentReader/Assets/WarmParchmentBC1.blp \
               ParchmentReader/Assets/LibraryBook.tga \
               ParchmentReader/Assets/FavoriteOutline.tga \

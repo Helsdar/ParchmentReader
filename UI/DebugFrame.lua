@@ -352,7 +352,7 @@ function ParchmentReader:UpdateDebugInfo()
     local fullText = table.concat(info, "\n")
 
     local frame = ParchmentReaderDebugFrame
-    frame.debugText:SetText(ParchmentReader.Theme:DiagnosticText(fullText))
+    frame.debugText:SetText(ParchmentReader.Theme:DiagnosticText(fullText, frame.debugText))
     if frame.debugScrollChild and frame.debugScrollFrame then
         frame.debugScrollChild:SetHeight(math.max(
             frame.debugScrollFrame:GetHeight(),
