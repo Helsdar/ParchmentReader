@@ -262,7 +262,6 @@ end
 local function ConfigureReaderText(fontString)
     fontString:SetJustifyH("LEFT")
     fontString:SetJustifyV("TOP")
-    fontString:SetSpacing(2)
     fontString:SetNonSpaceWrap(true)
     local color = ParchmentReader.Theme:Get("text", "primary")
     ParchmentReader.Theme:BindColor(fontString, "SetTextColor", color)
@@ -301,6 +300,8 @@ function ParchmentReader:ApplyFontTo(fontString)
     local fontSize = tonumber(ParchmentReaderDB.fontSize) or 14
     local fontObject = GetReaderFontObject(fontName, fontSize)
     fontString:SetFontObject(fontObject)
+
+    fontString:SetSpacing(self:NormalizeReaderLineSpacing(ParchmentReaderDB.readerLineSpacing))
     ParchmentReader.Theme:ApplyTextShadow(fontString, fontObject)
 end
 
@@ -397,9 +398,13 @@ local function BuildChunkLayout(
 
     local chunks = SplitIntoChunks(content)
     local lineHeight = math.max(1, MeasureTextHeight(frame, "Ag"))
+
+
+    local spacing = math.max(0, tonumber(descriptor.spacing) or 0)
     local top = 0
 
-    for _, chunk in ipairs(chunks) do
+    for index, chunk in ipairs(chunks) do
+        if index > 1 then top = top + spacing end
         chunk.top = top
         chunk.height = math.max(lineHeight, MeasureTextHeight(frame, chunk.text))
         chunk.bottom = chunk.top + chunk.height

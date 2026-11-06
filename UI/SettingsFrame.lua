@@ -346,19 +346,30 @@ function ParchmentReader:CreateSettingsFrame()
     frame.fontDropdown = fontDropdown
     local fontHint = Text(reading, "", 0, 108, nil, "muted")
     local fontSizeSlider = NumberControl(reading, L["Font size:"], "ParchmentReaderFontSizeSlider",
-        0, 136, 456, 8, 24, 1, ParchmentReaderDB.fontSize or 14, function(value)
+        0, 136, 216, 8, 24, 1, ParchmentReaderDB.fontSize or 14, function(value)
             ParchmentReaderDB.fontSize = value
             ParchmentReader:UpdateFont()
             frame:RefreshFontSample()
         end)
     frame.fontSizeSlider = fontSizeSlider
+    local lineSpacingSlider = NumberControl(reading, L["Line spacing:"], "ParchmentReaderLineSpacingSlider",
+        240, 136, 216, ParchmentReader.READER_LINE_SPACING_MIN, ParchmentReader.READER_LINE_SPACING_MAX, 1,
+        ParchmentReader:NormalizeReaderLineSpacing(ParchmentReaderDB.readerLineSpacing), function(value)
+            ParchmentReaderDB.readerLineSpacing = ParchmentReader:NormalizeReaderLineSpacing(value)
+            ParchmentReader:UpdateFont()
+            frame:RefreshFontSample()
+        end)
+    frame.lineSpacingSlider = lineSpacingSlider
+
     local sampleSurface = PRUI.Panel(reading, {color = Theme:Get("bg", "surface")})
-    sampleSurface:SetSize(456, 92)
-    sampleSurface:SetPoint("TOPLEFT", reading, "TOPLEFT", 0, -212)
+    sampleSurface:SetSize(456, 98)
+    sampleSurface:SetPoint("TOPLEFT", reading, "TOPLEFT", 0, -210)
     PRUI.ApplyPaperSurface(sampleSurface, false)
     Text(sampleSurface, L["Text preview"], 12, 8, 432, "muted")
-    frame.fontSample = Text(sampleSurface, L["A quiet evening in Azeroth."], 12, 28, 432, "primary")
-    frame.fontSample:SetHeight(56)
+    frame.fontSample = Text(sampleSurface,
+        L["A quiet evening in Azeroth."] .. "\n" .. L["Lanterns glow along the road home."],
+        12, 24, 432, "primary")
+    frame.fontSample:SetHeight(66)
     frame.fontSample:SetMaxLines(2)
     function frame:RefreshFontSample()
         ParchmentReader:ApplyFontTo(self.fontSample)
@@ -808,6 +819,7 @@ function ParchmentReader:CreateSettingsFrame()
             ParchmentReaderDB.windowY = 0
             ParchmentReaderDB.fontSize = 14
             ParchmentReaderDB.fontName = "ChatFontNormal"
+            ParchmentReaderDB.readerLineSpacing = ParchmentReader.READER_LINE_SPACING_DEFAULT
             ParchmentReaderDB.hide = false
             ParchmentReaderDB.minimapAngle = 315
             ParchmentReaderDB.transparencyMode = "off"
@@ -837,6 +849,7 @@ function ParchmentReader:CreateSettingsFrame()
             widthSlider:SetValue(metrics.defaultWidth)
             heightSlider:SetValue(metrics.defaultHeight)
             fontSizeSlider:SetValue(14)
+            lineSpacingSlider:SetValue(ParchmentReader.READER_LINE_SPACING_DEFAULT)
             fontDropdown:SetValue("ChatFontNormal", true)
             transparencyDropdown:SetValue("off", true)
             combatTransparencyCheck:SetChecked(false)
