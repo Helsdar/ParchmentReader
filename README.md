@@ -34,6 +34,8 @@ resizable window.
   gameplay keys available to WoW at other times.
 - Configure reader size, font, transparency, shortcuts, and minimap access, with
   an optional transparent background override while in combat.
+- Adjust line spacing from 2 to 10 pixels in **Settings > Reading**, next to
+  Font size; the reader updates immediately and keeps your place.
 - Choose Off, Always, Smart, or Custom reader transparency. Custom reveals a
   live 0–100% slider and a Transparent until hovered checkbox. Text keeps its
   opacity; at high transparency in a light theme, use Azeroth Glass or enable
@@ -86,14 +88,12 @@ client checks for this bounded change were waived by the owner.
 
 ## Downloads
 
-The latest published release, **2.3.0**, adds the **Leatherbound**, **Gray UI**,
-and **Forever** appearances, available in **Settings > Appearance** with paged
-previews of all six choices and independent sun/moon assignments.
-Hallow's End is retired for this release; active seasonal readers return to
-their previous ordinary appearance. WoW Forever offers a one-time Forever
-appearance invitation that applies only when you choose it. Existing books,
-collections, bookmarks, reading progress, settings, and unsaved editor drafts
-are preserved. All supported clients remain in the shared package.
+The latest published release, **2.4.0**, adds **Line spacing** to
+**Settings > Reading**, next to Font size. Choose 2–10 pixels between reader
+lines; changes apply immediately and keep your reading position, and the text
+preview shows two lines. The default spacing matches previous versions.
+Existing books, collections, bookmarks, reading progress, settings, and unsaved
+editor drafts are preserved. All supported clients remain in the shared package.
 
 - [CurseForge](https://www.curseforge.com/wow/addons/parchment-reader)
 - [Wago Addons](https://addons.wago.io/addons/parchment-reader)
@@ -203,6 +203,10 @@ Version 2.3.0 preserves books, collections, bookmarks, reading progress,
 settings, and unsaved editor drafts. New appearances and news do not reset data
 or change the sun/moon assignments. Hallow's End retirement restores the saved
 ordinary appearance while retaining the seasonal preference.
+
+Version 2.4.0 preserves books, collections, bookmarks, reading progress,
+settings, and unsaved editor drafts. Line spacing defaults to the previous
+value; no saved-data reset is required.
 
 ## License
 

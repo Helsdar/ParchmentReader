@@ -57,6 +57,7 @@ local DEFAULTS = {
     minimapAngle    = 315,
     fontSize        = 14,
     fontName        = "ChatFontNormal",
+    readerLineSpacing = 2,
     sidebarCollapsed = false,
     transparencyMode = "off",
     readerCustomTransparency = 50,
@@ -93,6 +94,20 @@ function ParchmentReader:NormalizeCustomTransparency(value)
         return DEFAULTS.readerCustomTransparency
     end
     return math.floor(math.max(0, math.min(100, amount)) + 0.5)
+end
+
+ParchmentReader.READER_LINE_SPACING_DEFAULT = DEFAULTS.readerLineSpacing
+ParchmentReader.READER_LINE_SPACING_MIN = 2
+ParchmentReader.READER_LINE_SPACING_MAX = 10
+
+
+function ParchmentReader:NormalizeReaderLineSpacing(value)
+    local spacing = tonumber(value)
+    if not spacing or spacing ~= spacing or spacing == math.huge or spacing == -math.huge then
+        return DEFAULTS.readerLineSpacing
+    end
+    return math.floor(math.max(self.READER_LINE_SPACING_MIN,
+        math.min(self.READER_LINE_SPACING_MAX, spacing)) + 0.5)
 end
 
 local function ApplyDefaults(t)
@@ -1470,6 +1485,8 @@ _boot:SetScript("OnEvent", function(self, event, addonName)
             ParchmentReader:NormalizeTransparencyMode(ParchmentReaderDB.transparencyMode)
         ParchmentReaderDB.readerCustomTransparency =
             ParchmentReader:NormalizeCustomTransparency(ParchmentReaderDB.readerCustomTransparency)
+        ParchmentReaderDB.readerLineSpacing =
+            ParchmentReader:NormalizeReaderLineSpacing(ParchmentReaderDB.readerLineSpacing)
         ParchmentReaderDB.readerCustomTransparencyUntilHovered =
             ParchmentReaderDB.readerCustomTransparencyUntilHovered == true
         ParchmentReaderDB.readerCombatTransparency =

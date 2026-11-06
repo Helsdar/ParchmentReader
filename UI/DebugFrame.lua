@@ -204,6 +204,8 @@ function ParchmentReader:UpdateDebugInfo()
         table.insert(info, string.format(
             L["Font Size: %s"], tostring(ParchmentReaderDB.fontSize)))
         table.insert(info, string.format(
+            L["Line Spacing: %s"], tostring(ParchmentReaderDB.readerLineSpacing)))
+        table.insert(info, string.format(
             L["Minimap Hidden: %s"], tostring(ParchmentReaderDB.hide)))
         table.insert(info, string.format(
             L["Compact Mode: %s"], tostring(ParchmentReaderDB.sidebarCollapsed)))

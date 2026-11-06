@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.4.0 — 2026-11-06
+
+- Added **Line spacing** to **Settings > Reading**, next to Font size. Choose 2–10 pixels between reader lines; changes apply immediately and keep your reading position.
+- The Settings text preview now shows two lines, so you can see the spacing before you read.
+- Lines stay evenly spaced throughout long books.
+
+Existing books, collections, bookmarks, reading progress, settings, and unsaved editor drafts are preserved. The default spacing matches previous versions. No saved-data reset is required. One shared package includes every supported client manifest.
+
 ## 2.3.0 — 2026-11-05
 
 - Added **Leatherbound**, combining dark leather with pale paper, **Gray UI**, with native quest parchment, graphite panels, and red buttons, and **Forever**, with warm panels, gold frames, and native red/gold controls. Choose them in **Settings > Appearance**.
