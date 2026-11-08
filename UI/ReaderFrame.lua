@@ -89,6 +89,7 @@ local function HideReaderMenus(frame)
         _G.ParchmentReaderBookContextMenu,
         _G.ParchmentReaderBookMovePopover,
         _G.ParchmentReaderRecentContextMenu,
+        _G.ParchmentReaderLibrarySortMenu,
     }
     for _, menu in pairs(menus) do
         menu:Hide()
@@ -165,6 +166,174 @@ function ParchmentReader:ShowRecentContextMenu(anchor)
     menu:ClearAllPoints()
     menu:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
     menu:Show()
+end
+
+local LIBRARY_SORT_OPTIONS = {
+    {mode = "title", label = "Title (A-Z)"},
+    {mode = "modified", label = "Recently modified"},
+}
+local LIBRARY_SORT_ROW_HEIGHT = 24
+
+local function GetLibrarySortLabel(mode)
+    for _, option in ipairs(LIBRARY_SORT_OPTIONS) do
+        if option.mode == mode then return L[option.label] end
+    end
+    return L[LIBRARY_SORT_OPTIONS[1].label]
+end
+
+local function SetLibrarySortRowSelected(row, selected)
+    PRUI.SetButtonTextColor(
+        row,
+        Theme:Get(selected and "accent" or "text", selected and "gold" or "secondary"))
+    row.label:ClearAllPoints()
+    row.label:SetPoint("LEFT", row.pruiContent, "LEFT", selected and 15 or 10, 0)
+    row.label:SetPoint("RIGHT", row.pruiContent, "RIGHT", -8, 0)
+    row.selectedRail:SetShown(selected)
+end
+
+local function RefreshLibrarySortMenu(menu)
+    local mode = ParchmentReader:GetLibrarySortMode()
+    for _, row in ipairs(menu.rows) do
+        SetLibrarySortRowSelected(row, row.mode == mode)
+    end
+end
+
+local function GetLibrarySortMenu()
+    local menu = _G.ParchmentReaderLibrarySortMenu
+    if menu then return menu end
+
+    menu = PRUI.Panel(UIParent, {
+        name = "ParchmentReaderLibrarySortMenu",
+        color = Theme:Get("bg", "popover"),
+        borderColor = Theme:Get("border", "elevated"),
+
+        shadow = false,
+    })
+    PRUI.SetAddonFrameLayer(menu, PRUI.ADDON_FRAME_LEVELS.POPOVER)
+    menu:SetClampedToScreen(true)
+    menu:EnableMouse(true)
+    menu.rows = {}
+    ParchmentReader:RegisterEscapeClose("ParchmentReaderLibrarySortMenu")
+
+    local header = menu:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    header:SetPoint("LEFT", menu, "TOPLEFT", 9, -14)
+    header:SetText(L["SORT BY"])
+    SetFontStringColor(header, Theme:Get("accent", "gold"))
+
+    local headerRule = menu:CreateTexture(nil, "BORDER")
+    headerRule:SetPoint("TOPLEFT", menu, "TOPLEFT", 1, -27)
+    headerRule:SetPoint("TOPRIGHT", menu, "TOPRIGHT", -1, -27)
+    headerRule:SetHeight(1)
+    Theme:BindColor(headerRule, "SetColorTexture", Theme:Get("border", "elevated"))
+
+    local measure = menu:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local width = math.ceil(header:GetStringWidth()) + 18
+    for index, option in ipairs(LIBRARY_SORT_OPTIONS) do
+        local row = PRUI.Button(menu, L[option.label], {
+            height = LIBRARY_SORT_ROW_HEIGHT,
+            justifyH = "LEFT",
+            skinRole = "row",
+        })
+        local offset = -(29 + (index - 1) * LIBRARY_SORT_ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", menu, "TOPLEFT", 5, offset)
+        row:SetPoint("TOPRIGHT", menu, "TOPRIGHT", -5, offset)
+        row.label:SetJustifyH("LEFT")
+
+        row.pruiHoverBorderColor = Theme:Get("state", "clear")
+        row.pruiSelectedBorderColor = Theme:Get("state", "clear")
+        PRUI.SetButtonBorderColor(row, Theme:Get("state", "clear"))
+        PRUI.SetButtonIdleBackgroundAlpha(row, 0)
+
+        local selectedRail = row.pruiContent:CreateTexture(nil, "ARTWORK")
+        selectedRail:SetPoint("TOPLEFT", row.pruiContent, "TOPLEFT", 4, -4)
+        selectedRail:SetPoint("BOTTOMLEFT", row.pruiContent, "BOTTOMLEFT", 4, 4)
+        selectedRail:SetWidth(2)
+        Theme:BindColor(selectedRail, "SetColorTexture", Theme:Get("accent", "gold"))
+        row.selectedRail = selectedRail
+        row.mode = option.mode
+        row:SetScript("OnClick", function(button)
+            menu:Hide()
+            ParchmentReader:ApplyLibrarySortMode(button.mode)
+        end)
+        menu.rows[index] = row
+
+        measure:SetText(L[option.label])
+        width = math.max(width, math.ceil(measure:GetStringWidth()) + 36)
+    end
+    measure:Hide()
+    menu:SetSize(
+        math.max(144, math.min(260, width)),
+        34 + #LIBRARY_SORT_OPTIONS * LIBRARY_SORT_ROW_HEIGHT)
+    ConfigureOutsideDismiss(menu)
+    menu:HookScript("OnShow", function(self)
+        if self.owner then self.owner.sortMenuOpen = true end
+        ParchmentReader:RefreshLibrarySortControl()
+    end)
+    menu:HookScript("OnHide", function(self)
+        if self.owner then self.owner.sortMenuOpen = false end
+        ParchmentReader:RefreshLibrarySortControl()
+    end)
+    menu:Hide()
+    return menu
+end
+
+function ParchmentReader:ShowLibrarySortMenu(anchor)
+    local menu = _G.ParchmentReaderLibrarySortMenu
+    local wasShown = menu and menu:IsShown()
+    HideReaderMenus(ParchmentReaderFrame)
+    GameTooltip:Hide()
+    anchor.pruiTooltipGeneration = (anchor.pruiTooltipGeneration or 0) + 1
+    if wasShown or self:GetLibraryView() == "recent" then return end
+
+    menu = GetLibrarySortMenu()
+    RefreshLibrarySortMenu(menu)
+    menu.owner = anchor
+    menu:ClearAllPoints()
+
+    menu:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -4)
+    menu:Show()
+end
+
+function ParchmentReader:RefreshLibrarySortControl()
+    local frame = ParchmentReaderFrame
+    local button = frame and frame.librarySortButton
+    if not button then return end
+
+    local recent = self:GetLibraryView() == "recent"
+    if recent then
+        local menu = _G.ParchmentReaderLibrarySortMenu
+        if menu then menu:Hide() end
+        button:Disable()
+    else
+        button:Enable()
+    end
+    local color
+    if recent then
+        color = Theme:Get("text", "muted")
+    elseif self:GetLibrarySortMode() ~= "title" then
+        color = Theme:Get("accent", "gold")
+    elseif button.sortHovered or button.sortMenuOpen then
+        color = Theme:Get("text", "primary")
+    else
+        color = Theme:Get("text", "muted")
+    end
+    Theme:BindIconColor(button.icon, color)
+    button:SetAlpha(recent and 0.5 or 1)
+end
+
+function ParchmentReader:ApplyLibrarySortMode(mode)
+    local previous = self:GetLibrarySortMode()
+    local normalized = self:SetLibrarySortMode(mode)
+    local menu = _G.ParchmentReaderLibrarySortMenu
+    if menu then menu:Hide() end
+    local frame = ParchmentReaderFrame
+    if not frame then return normalized end
+    self:RefreshLibrarySortControl()
+    if normalized ~= previous then
+        if frame.sidebarScroll then frame.sidebarScroll:SetVerticalScroll(0) end
+        self:RefreshBookList()
+    end
+    return normalized
 end
 
 local function GetCollectionNameDialog()
@@ -849,6 +1018,7 @@ function ParchmentReader:RefreshLibraryViewControls()
     for viewId, button in pairs(frame.libraryViewButtons) do
         PRUI.SetButtonSelected(button, viewId == view)
     end
+    self:RefreshLibrarySortControl()
 
     if ParchmentReaderDB.sidebarCollapsed then
         HideReaderMenus(frame)
@@ -2354,6 +2524,15 @@ function ParchmentReader:IsForeverDiscoveryClient()
     return tonumber(interface) == 16001
 end
 
+
+
+
+function ParchmentReader:NoteForeverThemeUsed()
+    if ParchmentReaderDB and self:IsForeverDiscoveryClient() then
+        ParchmentReaderDB.foreverAppearanceSeenNews = FOREVER_DISCOVERY_ID
+    end
+end
+
 function ParchmentReader:DismissForeverDiscovery(frame)
     frame = frame or ParchmentReaderFrame
     if frame and frame.foreverDiscoveryHint then frame.foreverDiscoveryHint:Hide() end
@@ -2599,6 +2778,7 @@ local function IsReaderInteractionActive(frame)
         or IsShownAndMouseOver(_G.ParchmentReaderBookContextMenu)
         or IsShownAndMouseOver(_G.ParchmentReaderBookMovePopover)
         or IsShownAndMouseOver(_G.ParchmentReaderRecentContextMenu)
+        or IsShownAndMouseOver(_G.ParchmentReaderLibrarySortMenu)
 end
 
 function ParchmentReader:RefreshReaderTransparency()
@@ -3231,7 +3411,7 @@ function ParchmentReader:CreateReaderFrame()
         fontObject = "GameFontNormalSmall",
     })
     searchContainer:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 4, -4)
-    searchContainer:SetPoint("TOPRIGHT", sidebar, "TOPRIGHT", -4, -4)
+    searchContainer:SetPoint("TOPRIGHT", sidebar, "TOPRIGHT", -28, -4)
     searchContainer:SetHeight(24)
     searchBox:ClearAllPoints()
     searchBox:SetPoint("TOPLEFT", searchContainer, "TOPLEFT", 1, -1)
@@ -3387,6 +3567,38 @@ function ParchmentReader:CreateReaderFrame()
     end
     frame.libraryViewGroup = libraryViewGroup
     frame.libraryViewButtons = libraryViewButtons
+
+
+    local librarySortButton = CreateFrame("Button", nil, searchContainer)
+    librarySortButton:SetSize(20, 24)
+    librarySortButton:SetPoint("LEFT", searchContainer, "RIGHT", 4, 0)
+    local librarySortIcon = librarySortButton:CreateTexture(nil, "ARTWORK")
+    librarySortIcon:SetSize(14, 14)
+    librarySortIcon:SetPoint("CENTER")
+    librarySortIcon:SetTexture("Interface\\AddOns\\ParchmentReader\\Assets\\Sort")
+    librarySortButton.icon = librarySortIcon
+    librarySortButton:SetScript("OnEnter", function(self)
+        self.sortHovered = true
+        ParchmentReader:RefreshLibrarySortControl()
+    end)
+    librarySortButton:SetScript("OnLeave", function(self)
+        self.sortHovered = false
+        ParchmentReader:RefreshLibrarySortControl()
+    end)
+    librarySortButton:SetScript("OnClick", function(self)
+        ParchmentReader:ShowLibrarySortMenu(self)
+    end)
+    PRUI.AttachTooltip(librarySortButton, function()
+        local menu = _G.ParchmentReaderLibrarySortMenu
+        if menu and menu:IsShown() then return end
+        if ParchmentReader:GetLibraryView() == "recent" then
+            return L["Recent is sorted by last opened"]
+        end
+        return string.format(
+            L["Sort: %s"],
+            GetLibrarySortLabel(ParchmentReader:GetLibrarySortMode()))
+    end)
+    frame.librarySortButton = librarySortButton
 
     local collapsedLibraryButton = PRUI.IconButton(
         sidebar,
@@ -3959,16 +4171,24 @@ function ParchmentReader:RefreshBookList()
             end
         end
     else
+        local byModified = self:GetLibrarySortMode() == "modified"
         for bookKey, bookData in pairs(self.books) do
             if view == "all" or self:IsFavoriteBook(bookKey) then
                 orderedBooks[#orderedBooks + 1] = {
                     key = bookKey,
                     data = bookData,
                     normalizedTitle = self:NormalizeSearchText(bookData.title),
+                    modifiedTime = byModified
+                        and self:GetBookModifiedTime(bookKey) or nil,
                 }
             end
         end
         table.sort(orderedBooks, function(a, b)
+            if byModified and a.modifiedTime ~= b.modifiedTime then
+                if not a.modifiedTime then return false end
+                if not b.modifiedTime then return true end
+                return a.modifiedTime > b.modifiedTime
+            end
             return CompareNormalizedBookTitles(
                 a.data.title,
                 a.normalizedTitle,

@@ -419,4 +419,9 @@ ParchmentReader:RegisterLocale("ruRU", {
     ["Restored without a collection."] = "Восстановлена без коллекции.",
     ["Renamed to avoid a duplicate title."] = "Название изменено из-за совпадения.",
     ["Books permanently deleted. Other entries remain in Trash."] = "Книги удалены навсегда. В корзине остались другие записи.",
+    ["SORT BY"] = "СОРТИРОВКА",
+    ["Title (A-Z)"] = "Название (А-Я)",
+    ["Recently modified"] = "Недавно изменённые",
+    ["Sort: %s"] = "Сортировка: %s",
+    ["Recent is sorted by last opened"] = "Недавние упорядочены по последнему открытию",
 })

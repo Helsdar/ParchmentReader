@@ -2594,6 +2594,7 @@ function ParchmentReader:SetTheme(value)
     Theme:NormalizeSeasonalState(ParchmentReaderDB)
     value = ParchmentReaderDB.themeName
     Theme:SetPalette(value)
+    if value == "Forever" and self.NoteForeverThemeUsed then self:NoteForeverThemeUsed() end
     local frame = ParchmentReaderFrame
     if frame then
         if frame.contentSurface then PRUI.AddPaperEdges(frame.contentSurface) end

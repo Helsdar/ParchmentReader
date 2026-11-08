@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.5.0 — 2026-11-08
+
+- Added **library sorting**. Use the new sort button next to the search field to switch between **Title (A-Z)** and **Recently modified**.
+- **Recently modified** lists the books you most recently saved, renamed, or moved first; books without a saved date follow. Sorting applies to Library and Favorites together with collection and search filters, and **Recent** keeps its last-opened order.
+- Your sort choice is remembered; **Reset to Defaults** restores Title.
+- On **WoW Forever**, the Forever appearance invitation no longer appears once you have used the Forever appearance.
+
+Existing books, collections, bookmarks, reading progress, settings, and unsaved editor drafts are preserved. The default order matches previous versions. No saved-data reset is required. One shared package includes every supported client manifest.
+
 ## 2.4.0 — 2026-11-06
 
 - Added **Line spacing** to **Settings > Reading**, next to Font size. Choose 2–10 pixels between reader lines; changes apply immediately and keep your reading position.

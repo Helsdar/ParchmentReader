@@ -1,6 +1,7 @@
 
 
 
+
 ParchmentReader = ParchmentReader or {}
 
 local RECENT_LIMIT = 20
@@ -10,6 +11,11 @@ local VALID_VIEWS = {
     recent = true,
 }
 local currentView = "all"
+local DEFAULT_SORT_MODE = "title"
+local VALID_SORT_MODES = {
+    title = true,
+    modified = true,
+}
 
 local function NormalizeView(view)
     return VALID_VIEWS[view] and view or "all"
@@ -77,6 +83,35 @@ end
 
 function ParchmentReader:GetLibraryView()
     return currentView
+end
+
+function ParchmentReader:NormalizeLibrarySortMode(mode)
+    return VALID_SORT_MODES[mode] and mode or DEFAULT_SORT_MODE
+end
+
+function ParchmentReader:GetLibrarySortMode()
+    return self:NormalizeLibrarySortMode(ParchmentReaderDB.librarySortMode)
+end
+
+function ParchmentReader:SetLibrarySortMode(mode)
+    local normalized = self:NormalizeLibrarySortMode(mode)
+    ParchmentReaderDB.librarySortMode = normalized
+    return normalized
+end
+
+local function ValidTimestamp(value)
+    return type(value) == "number" and value == value
+        and value >= 0 and value < math.huge
+end
+
+
+function ParchmentReader:GetBookModifiedTime(bookKey)
+    local saved = type(ParchmentReaderDB.customBooks) == "table"
+        and ParchmentReaderDB.customBooks[bookKey]
+    if type(saved) ~= "table" then return nil end
+    if ValidTimestamp(saved.modifiedAt) then return saved.modifiedAt end
+    if ValidTimestamp(saved.createdAt) then return saved.createdAt end
+    return nil
 end
 
 function ParchmentReader:IsFavoriteBook(bookKey)

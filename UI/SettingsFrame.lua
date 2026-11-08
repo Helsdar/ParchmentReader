@@ -893,6 +893,7 @@ function ParchmentReader:CreateSettingsFrame()
             ParchmentReader:SetReaderTransparencyMode("off")
             ParchmentReader:SetReaderCombatTransparencyEnabled(false)
             ParchmentReader:SetReaderKeyboardNavigationEnabled(true)
+            ParchmentReader:ApplyLibrarySortMode("title")
 
             if reloadForLanguage then
                 StaticPopup_Show("PARCHMENTREADER_RELOAD_LANGUAGE")

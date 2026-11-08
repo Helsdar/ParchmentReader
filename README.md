@@ -11,6 +11,7 @@ resizable window.
 - Recover deleted saved books and notes for 30 days through a quiet Trash window
   in Settings > General > Maintenance.
 - Switch between Library, Favorites, and the 20 most recently opened books.
+- Sort Library and Favorites by title or by most recently modified.
 - Search titles and collections by default, or enable the compact **Aa** scope
   to find a complete phrase in book content within the active collection.
 - Open a content result with Enter or a click, highlight the matching phrase,
@@ -88,12 +89,14 @@ client checks for this bounded change were waived by the owner.
 
 ## Downloads
 
-The latest published release, **2.4.0**, adds **Line spacing** to
-**Settings > Reading**, next to Font size. Choose 2–10 pixels between reader
-lines; changes apply immediately and keep your reading position, and the text
-preview shows two lines. The default spacing matches previous versions.
-Existing books, collections, bookmarks, reading progress, settings, and unsaved
-editor drafts are preserved. All supported clients remain in the shared package.
+The latest published release, **2.5.0**, adds **library sorting**: the sort
+button next to the search field switches Library and Favorites between
+**Title (A-Z)** and **Recently modified**, together with collection and search
+filters. Recent keeps its last-opened order, and **Reset to Defaults** restores
+Title. On WoW Forever, the Forever appearance invitation no longer appears once
+you have used that appearance. Existing books, collections, bookmarks, reading
+progress, settings, and unsaved editor drafts are preserved. All supported
+clients remain in the shared package.
 
 - [CurseForge](https://www.curseforge.com/wow/addons/parchment-reader)
 - [Wago Addons](https://addons.wago.io/addons/parchment-reader)
@@ -127,6 +130,8 @@ manifest.
 - Use Library, Favorites, and Recent below the search field. Right-click a book
   to change its favorite status, edit it, or move it to another collection.
 - Right-click Recent to clear reading history after confirmation.
+- Use the sort button next to the search field to choose **Title (A-Z)** or
+  **Recently modified**. Recent keeps its last-opened order.
 - Use **Move to Trash** from a book's context menu or
   editor, then use **Settings > General > Maintenance > Open Trash**. Inspect a deleted record and
   choose **Restore** or **Delete Permanently**; **Empty Trash** clears confirmed
@@ -207,6 +212,10 @@ ordinary appearance while retaining the seasonal preference.
 Version 2.4.0 preserves books, collections, bookmarks, reading progress,
 settings, and unsaved editor drafts. Line spacing defaults to the previous
 value; no saved-data reset is required.
+
+Version 2.5.0 preserves books, collections, bookmarks, reading progress,
+settings, and unsaved editor drafts. Sorting defaults to the previous title
+order and never changes saved dates; no saved-data reset is required.
 
 ## License
 

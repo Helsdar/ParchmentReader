@@ -59,6 +59,7 @@ local DEFAULTS = {
     fontName        = "ChatFontNormal",
     readerLineSpacing = 2,
     sidebarCollapsed = false,
+    librarySortMode = "title",
     transparencyMode = "off",
     readerCustomTransparency = 50,
     readerCustomTransparencyUntilHovered = false,
@@ -1487,6 +1488,11 @@ _boot:SetScript("OnEvent", function(self, event, addonName)
             ParchmentReader:NormalizeCustomTransparency(ParchmentReaderDB.readerCustomTransparency)
         ParchmentReaderDB.readerLineSpacing =
             ParchmentReader:NormalizeReaderLineSpacing(ParchmentReaderDB.readerLineSpacing)
+        ParchmentReaderDB.librarySortMode =
+            ParchmentReader:NormalizeLibrarySortMode(ParchmentReaderDB.librarySortMode)
+        if ParchmentReaderDB.themeName == "Forever" and ParchmentReader.NoteForeverThemeUsed then
+            ParchmentReader:NoteForeverThemeUsed()
+        end
         ParchmentReaderDB.readerCustomTransparencyUntilHovered =
             ParchmentReaderDB.readerCustomTransparencyUntilHovered == true
         ParchmentReaderDB.readerCombatTransparency =
