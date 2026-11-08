@@ -419,4 +419,9 @@ ParchmentReader:RegisterLocale("deDE", {
     ["Restored without a collection."] = "Ohne Sammlung wiederhergestellt.",
     ["Renamed to avoid a duplicate title."] = "Titel wegen eines Duplikats geändert.",
     ["Books permanently deleted. Other entries remain in Trash."] = "Bücher endgültig gelöscht. Weitere Einträge bleiben im Papierkorb.",
+    ["SORT BY"] = "SORTIEREN NACH",
+    ["Title (A-Z)"] = "Titel (A-Z)",
+    ["Recently modified"] = "Zuletzt geändert",
+    ["Sort: %s"] = "Sortierung: %s",
+    ["Recent is sorted by last opened"] = "„Zuletzt geöffnet“ ist nach dem letzten Öffnen sortiert",
 })
