@@ -240,7 +240,7 @@ function ParchmentReader:CreateBookEditorFrame()
     frame.collLabel = collLabel
 
     local collectionPicker = PRUI.Dropdown(frame, {
-        popoverName = "ParchmentReaderEditorCollectionPopover",
+        popoverName = "ParchmentReaderEditorCollectionPopover", popoverShadow = false,
         items = BuildCollectionPickerItems(), getItems = BuildCollectionPickerItems,
         searchable = true, searchThreshold = 8, maxRows = 8,
         onValueChanged = function(value)

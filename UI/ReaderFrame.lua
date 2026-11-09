@@ -129,7 +129,7 @@ function ParchmentReader:ShowRecentContextMenu(anchor)
         menu = PRUI.Panel(UIParent, {
             name = "ParchmentReaderRecentContextMenu",
             color = Theme:Get("bg", "popover"),
-            shadow = true,
+            shadow = false,
         })
         PRUI.SetAddonFrameLayer(menu, PRUI.ADDON_FRAME_LEVELS.POPOVER)
         menu:SetClampedToScreen(true)
@@ -561,7 +561,7 @@ local function GetCollectionContextMenu()
     menu = PRUI.Panel(UIParent, {
         name = "ParchmentReaderCollectionContextMenu",
         color = Theme:Get("bg", "base"),
-        shadow = true,
+        shadow = false,
     })
     menu:SetSize(226, 56)
     PRUI.SetAddonFrameLayer(menu, PRUI.ADDON_FRAME_LEVELS.POPOVER)
@@ -1110,7 +1110,7 @@ local function GetBookMovePopover()
         name = "ParchmentReaderBookMovePopover",
         color = Theme:Get("bg", "popover"),
         borderColor = Theme:Get("border", "elevated"),
-        shadow = true,
+        shadow = false,
     })
     popover:SetWidth(240)
     PRUI.SetAddonFrameLayer(
@@ -1229,7 +1229,7 @@ local function GetBookContextMenu()
     menu = PRUI.Panel(UIParent, {
         name = "ParchmentReaderBookContextMenu",
         color = Theme:Get("bg", "popover"),
-        shadow = true,
+        shadow = false,
     })
     menu:SetSize(206, 111)
     PRUI.SetAddonFrameLayer(menu, PRUI.ADDON_FRAME_LEVELS.POPOVER)
@@ -1923,7 +1923,7 @@ local function CreateBookmarkPopover(frame, owner)
     local popover = PRUI.Panel(frame, {
         name = "ParchmentReaderBookmarkPopover",
         color = Theme:Get("bg", "popover"),
-        shadow = true,
+        shadow = false,
     })
     popover:SetSize(
         BOOKMARK_POPOVER_MAX_WIDTH,
@@ -2930,7 +2930,7 @@ end
 local function CreateFloatingLauncherMenu(launcher)
     local menu = PRUI.Panel(UIParent, {
         color = Theme:Get("bg", "popover"),
-        shadow = true,
+        shadow = false,
     })
     menu:SetSize(226, 82)
     PRUI.SetAddonFrameLayer(menu, PRUI.ADDON_FRAME_LEVELS.POPOVER)

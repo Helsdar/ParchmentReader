@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.5.1 — 2026-11-09
+
+- Small menus and popovers no longer cast a dark outer shadow over the reading page and sidebar. This covers the Recent, collection and book context menus, **Move To**, the bookmark list, the floating icon's menu and the Book Editor collection picker. Windows and dialogs keep their shadow.
+- In the **Forever** appearance, these menus now use the same plain border as the sort menu.
+
+Existing books, collections, bookmarks, reading progress, settings, and unsaved editor drafts are preserved. No saved-data reset is required. One shared package includes every supported client manifest.
+
 ## 2.5.0 — 2026-11-08
 
 - Added **library sorting**. Use the new sort button next to the search field to switch between **Title (A-Z)** and **Recently modified**.
