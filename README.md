@@ -89,14 +89,14 @@ client checks for this bounded change were waived by the owner.
 
 ## Downloads
 
-The latest published release, **2.5.0**, adds **library sorting**: the sort
-button next to the search field switches Library and Favorites between
-**Title (A-Z)** and **Recently modified**, together with collection and search
-filters. Recent keeps its last-opened order, and **Reset to Defaults** restores
-Title. On WoW Forever, the Forever appearance invitation no longer appears once
-you have used that appearance. Existing books, collections, bookmarks, reading
-progress, settings, and unsaved editor drafts are preserved. All supported
-clients remain in the shared package.
+The latest published release, **2.5.1**, removes the dark outer shadow from the
+small menus and popovers (Recent, collection and book menus, Move To, bookmarks,
+the floating icon's menu and the editor collection picker), so they no longer
+darken the reading page and sidebar; windows and dialogs keep theirs. It builds
+on 2.5.0, which added **library sorting** by **Title (A-Z)** or **Recently
+modified**. Existing books, collections, bookmarks, reading progress, settings,
+and unsaved editor drafts are preserved. All supported clients remain in the
+shared package.
 
 - [CurseForge](https://www.curseforge.com/wow/addons/parchment-reader)
 - [Wago Addons](https://addons.wago.io/addons/parchment-reader)
@@ -216,6 +216,10 @@ value; no saved-data reset is required.
 Version 2.5.0 preserves books, collections, bookmarks, reading progress,
 settings, and unsaved editor drafts. Sorting defaults to the previous title
 order and never changes saved dates; no saved-data reset is required.
+
+Version 2.5.1 is a visual polish release. It preserves books, collections,
+bookmarks, reading progress, settings, and unsaved editor drafts; no saved-data
+reset is required.
 
 ## License
 
