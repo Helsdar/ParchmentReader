@@ -558,7 +558,6 @@ function Theme:SetPalette(value)
 end
 
 function Theme:SearchMatchColor()
-    if self.paletteName == "QuestJournal" or self.paletteName == "Forever" then return "|cFF210603" end
     if self.paletteName == "HallowsEnd" then return "|cFFA6BD78" end
     return (self:IsLight() or self:IsHybrid()) and "|cFF8A240C" or "|cFFFFD36A"
 end

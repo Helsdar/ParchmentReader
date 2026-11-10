@@ -1204,11 +1204,13 @@ local function GetBookMovePopover()
         popover.rows[index] = row
     end
 
-    popover.scrollHint = popover:CreateFontString(
-        nil, "OVERLAY", "GameFontNormalSmall")
-    popover.scrollHint:SetPoint("TOPRIGHT", popover, "TOPRIGHT", -8, -8)
-    popover.scrollHint:SetText("↕")
-    SetFontStringColor(popover.scrollHint, Theme:Get("text", "muted"))
+
+    popover.scrollHint = popover:CreateTexture(nil, "OVERLAY")
+    popover.scrollHint:SetSize(12, 12)
+    popover.scrollHint:SetPoint("RIGHT", popover, "TOPRIGHT", -9, -14)
+    popover.scrollHint:SetTexture("Interface\\AddOns\\ParchmentReader\\Assets\\Sort")
+    SetTextureColor(popover.scrollHint, Theme:Get("text", "muted"))
+    popover.scrollHint:Hide()
 
     popover:SetScript("OnMouseWheel", function(_, delta)
         local maximumOffset = math.max(0, #popover.items - BOOK_MOVE_ROW_POOL_SIZE)
@@ -2921,6 +2923,104 @@ local function ClampFloatingLauncherPosition(x, y)
         Clamp(y, -verticalLimit, verticalLimit)
 end
 
+
+
+
+local LAUNCHER_PALETTE = Theme.palettes.AzerothGlass
+local LAUNCHER_COLORS = {
+    base = LAUNCHER_PALETTE.bg.base,
+    popover = LAUNCHER_PALETTE.bg.popover,
+    control = LAUNCHER_PALETTE.bg.control,
+    border = LAUNCHER_PALETTE.border.subtle,
+    hover = LAUNCHER_PALETTE.state.hover,
+    active = LAUNCHER_PALETTE.state.active,
+    accent = LAUNCHER_PALETTE.accent.goldDim,
+    clear = LAUNCHER_PALETTE.state.clear,
+    text = LAUNCHER_PALETTE.text.secondary,
+    textHover = LAUNCHER_PALETTE.text.primary,
+}
+
+local function AddLauncherBorder(frame, color)
+    local border = {}
+    for _, edge in ipairs({
+        {"TOPLEFT", "TOPRIGHT", "SetHeight"}, {"BOTTOMLEFT", "BOTTOMRIGHT", "SetHeight"},
+        {"TOPLEFT", "BOTTOMLEFT", "SetWidth"}, {"TOPRIGHT", "BOTTOMRIGHT", "SetWidth"},
+    }) do
+        local texture = frame:CreateTexture(nil, "BORDER")
+        texture:SetPoint(edge[1])
+        texture:SetPoint(edge[2])
+        texture[edge[3]](texture, 1)
+        texture:SetColorTexture(unpack(color))
+        border[#border + 1] = texture
+    end
+    return border
+end
+
+local function PaintLauncherSurface(frame, color)
+    frame.background = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+    frame.background:SetAllPoints()
+    frame.background:SetColorTexture(unpack(color))
+    frame.border = AddLauncherBorder(frame, LAUNCHER_COLORS.border)
+end
+
+local function RefreshLauncherControl(control)
+    local emphasized = control.pressed or control.hovered
+    control.state:SetColorTexture(unpack(control.pressed and LAUNCHER_COLORS.active
+        or control.hovered and LAUNCHER_COLORS.hover or LAUNCHER_COLORS.clear))
+    local border = emphasized and LAUNCHER_COLORS.accent or LAUNCHER_COLORS.border
+    for _, texture in ipairs(control.border) do texture:SetColorTexture(unpack(border)) end
+    local offset = control.pressed and -1 or 0
+    if control.icon then
+        control.icon:ClearAllPoints()
+        control.icon:SetPoint("CENTER", control, "CENTER", 0, offset)
+    end
+    if control.label then
+        control.label:SetTextColor(unpack(emphasized and LAUNCHER_COLORS.textHover
+            or LAUNCHER_COLORS.text))
+        control.label:ClearAllPoints()
+        control.label:SetPoint("LEFT", control, "LEFT", 8, offset)
+        control.label:SetPoint("RIGHT", control, "RIGHT", -8, offset)
+    end
+end
+
+local function CreateLauncherControl(parent, width, height, text)
+    local control = CreateFrame("Button", nil, parent)
+    control:SetSize(width, height)
+    PaintLauncherSurface(control, LAUNCHER_COLORS.control)
+    control.state = control:CreateTexture(nil, "BACKGROUND", nil, 1)
+    control.state:SetAllPoints()
+    if text then
+        control.label = control:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        control.label:SetJustifyH("LEFT")
+        control.label:SetWordWrap(false)
+        control.label:SetMaxLines(1)
+        control.label:SetText(text)
+        function control:SetText(value) self.label:SetText(value or "") end
+    end
+    control:SetScript("OnEnter", function(self)
+        self.hovered = true
+        RefreshLauncherControl(self)
+    end)
+    control:SetScript("OnLeave", function(self)
+        self.hovered, self.pressed = false, false
+        RefreshLauncherControl(self)
+    end)
+    control:SetScript("OnMouseDown", function(self, mouseButton)
+        self.pressed = mouseButton == "LeftButton"
+        RefreshLauncherControl(self)
+    end)
+    control:SetScript("OnMouseUp", function(self)
+        self.pressed = false
+        RefreshLauncherControl(self)
+    end)
+    control:HookScript("OnHide", function(self)
+        self.hovered, self.pressed = false, false
+        RefreshLauncherControl(self)
+    end)
+    RefreshLauncherControl(control)
+    return control
+end
+
 local function RefreshFloatingLauncherMenu(menu)
     if not menu then return end
     menu.lockButton:SetText(
@@ -2928,22 +3028,15 @@ local function RefreshFloatingLauncherMenu(menu)
 end
 
 local function CreateFloatingLauncherMenu(launcher)
-    local menu = PRUI.Panel(UIParent, {
-        color = Theme:Get("bg", "popover"),
-        shadow = false,
-    })
+    local menu = CreateFrame("Frame", nil, UIParent)
+    PaintLauncherSurface(menu, LAUNCHER_COLORS.popover)
     menu:SetSize(226, 82)
     PRUI.SetAddonFrameLayer(menu, PRUI.ADDON_FRAME_LEVELS.POPOVER)
     menu:SetClampedToScreen(true)
     menu:EnableMouse(true)
     menu.owner = launcher.button
 
-    local lockButton = PRUI.Button(menu, L["Lock"], {
-        width = 216,
-        height = 24,
-        justifyH = "LEFT",
-        skinRole = "row",
-    })
+    local lockButton = CreateLauncherControl(menu, 216, 24, L["Lock"])
     lockButton:SetPoint("TOPLEFT", menu, "TOPLEFT", 5, -5)
     lockButton:SetScript("OnClick", function()
         ParchmentReaderDB.floatingLauncherLocked =
@@ -2953,29 +3046,21 @@ local function CreateFloatingLauncherMenu(launcher)
     end)
     menu.lockButton = lockButton
 
-    local settingsButton = PRUI.Button(menu, L["Open Settings"], {
-        width = 216,
-        height = 24,
-        justifyH = "LEFT",
-        skinRole = "row",
-    })
+    local settingsButton = CreateLauncherControl(menu, 216, 24, L["Open Settings"])
     settingsButton:SetPoint("TOPLEFT", lockButton, "BOTTOMLEFT", 0, 0)
     settingsButton:SetScript("OnClick", function()
         menu:Hide()
         ParchmentReader:ShowSettings()
     end)
+    menu.settingsButton = settingsButton
 
-    local closeButton = PRUI.Button(menu, L["Close"], {
-        width = 216,
-        height = 24,
-        justifyH = "LEFT",
-        skinRole = "row",
-    })
+    local closeButton = CreateLauncherControl(menu, 216, 24, L["Close"])
     closeButton:SetPoint("TOPLEFT", settingsButton, "BOTTOMLEFT", 0, 0)
     closeButton:SetScript("OnClick", function()
         menu:Hide()
         ParchmentReader:CloseReader()
     end)
+    menu.closeButton = closeButton
 
     ConfigureOutsideDismiss(menu)
     menu:Hide()
@@ -3027,28 +3112,23 @@ end
 function ParchmentReader:CreateFloatingLauncher()
     if self.floatingLauncher then return self.floatingLauncher end
 
-    local launcher = PRUI.Panel(UIParent, {
-        name = "ParchmentReaderFloatingLauncher",
-        color = Theme:Get("bg", "base"),
-        shadow = true,
-    })
+    local launcher = CreateFrame("Frame", "ParchmentReaderFloatingLauncher", UIParent)
     launcher:SetSize(FLOATING_LAUNCHER_SIZE, FLOATING_LAUNCHER_SIZE)
     PRUI.SetAddonFrameLayer(launcher, PRUI.ADDON_FRAME_LEVELS.READER)
     launcher:SetClampedToScreen(true)
     launcher:SetMovable(true)
+    PaintLauncherSurface(launcher, LAUNCHER_COLORS.base)
 
-    local button = PRUI.IconButton(
-        launcher,
-        "Interface\\Icons\\INV_Misc_Book_09",
-        L["Left-click to restore Parchment Reader\nRight-click for menu"],
-        {
-            width = FLOATING_LAUNCHER_SIZE - 4,
-            height = FLOATING_LAUNCHER_SIZE - 4,
-            iconSize = 25,
-            iconRole = "artwork",
-            texCoord = {0.08, 0.92, 0.08, 0.92},
-        })
+    local button = CreateLauncherControl(
+        launcher, FLOATING_LAUNCHER_SIZE - 4, FLOATING_LAUNCHER_SIZE - 4)
     button:SetPoint("CENTER")
+    button.icon = button:CreateTexture(nil, "ARTWORK")
+    button.icon:SetSize(25, 25)
+    button.icon:SetTexture("Interface\\Icons\\INV_Misc_Book_09")
+    button.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    button.icon:SetVertexColor(1, 1, 1, 1)
+    RefreshLauncherControl(button)
+    PRUI.AttachTooltip(button, L["Left-click to restore Parchment Reader\nRight-click for menu"])
     button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     button:RegisterForDrag("LeftButton")
     launcher.button = button

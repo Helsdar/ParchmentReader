@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.5.2 — 2026-11-10
+
+- In the **Gray UI** and **Forever** appearances, the current **Aa** content-search match is highlighted in dark red again instead of almost matching the text.
+- The **Move To** scroll hint now shows arrows instead of an empty box when there are more collections than fit.
+- The minimized floating icon and its menu now always use the dark Azeroth Glass look, without a shadow, whichever appearance you choose.
+- WoW Forever now uses the same CurseForge and Wago download as every other client.
+
+Existing books, collections, bookmarks, reading progress, settings, and unsaved editor drafts are preserved. No saved-data reset is required. One shared package includes every supported client manifest.
+
 ## 2.5.1 — 2026-11-09
 
 - Small menus and popovers no longer cast a dark outer shadow over the reading page and sidebar. This covers the Recent, collection and book context menus, **Move To**, the bookmark list, the floating icon's menu and the Book Editor collection picker. Windows and dialogs keep their shadow.
