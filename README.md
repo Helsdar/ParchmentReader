@@ -68,8 +68,9 @@ resizable window.
 - WoW Forever 1.60.1 (Interface 16001)
 
 All supported clients share one package. World of Warcraft automatically selects
-the appropriate manifest. On CurseForge, choose the file tagged for your client;
-Forever is published as a separate platform file containing the same addon.
+the appropriate manifest. From 2.5.2 on, one CurseForge and Wago file is tagged
+for every client, including WoW Forever 1.60.1. Releases 2.0.0 to 2.5.1 published
+Forever as a separate CurseForge file containing the same addon.
 
 The Forever package retains the native `_Camelot` manifest suffix confirmed in
 the original Beta. The local installation audit on 2026-11-04 found client
@@ -82,21 +83,20 @@ focused addon game checks passed there on 2026-10-03, including persistence
 after reload and a full client restart. The separate CurseForge 2.0.0 Forever
 file was owner-confirmed Approved on 2026-10-03. The original GitHub 2.0.0
 archive predates that additional manifest. The 2.0.1 package contains all five
-manifests. Forever uses a separate CurseForge file tagged only for 1.60.1;
-its addon payload is identical to the standard package.
+manifests. Through 2.5.1 Forever used a separate CurseForge file tagged only for
+1.60.1; its addon payload was identical to the standard package.
 The custom-transparency update was accepted in Retail on 2026-10-05; additional
 client checks for this bounded change were waived by the owner.
 
 ## Downloads
 
-The latest published release, **2.5.1**, removes the dark outer shadow from the
-small menus and popovers (Recent, collection and book menus, Move To, bookmarks,
-the floating icon's menu and the editor collection picker), so they no longer
-darken the reading page and sidebar; windows and dialogs keep theirs. It builds
-on 2.5.0, which added **library sorting** by **Title (A-Z)** or **Recently
-modified**. Existing books, collections, bookmarks, reading progress, settings,
-and unsaved editor drafts are preserved. All supported clients remain in the
-shared package.
+The latest published release, **2.5.2**, makes the current **Aa** search match
+visible again in the Gray UI and Forever appearances, replaces the empty box in
+the **Move To** scroll hint with arrows, and keeps the minimized floating icon and
+its menu in the dark Azeroth Glass look in every appearance. WoW Forever now uses
+the same CurseForge and Wago download as every other client. Existing books,
+collections, bookmarks, reading progress, settings, and unsaved editor drafts are
+preserved. All supported clients remain in the shared package.
 
 - [CurseForge](https://www.curseforge.com/wow/addons/parchment-reader)
 - [Wago Addons](https://addons.wago.io/addons/parchment-reader)
@@ -220,6 +220,10 @@ order and never changes saved dates; no saved-data reset is required.
 Version 2.5.1 is a visual polish release. It preserves books, collections,
 bookmarks, reading progress, settings, and unsaved editor drafts; no saved-data
 reset is required.
+
+Version 2.5.2 is a visual fix release and the first single download that also
+covers WoW Forever. It preserves books, collections, bookmarks, reading progress,
+settings, and unsaved editor drafts; no saved-data reset is required.
 
 ## License
 
