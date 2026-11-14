@@ -15,6 +15,7 @@ local DEFAULT_SORT_MODE = "title"
 local VALID_SORT_MODES = {
     title = true,
     modified = true,
+    added = true,
 }
 
 local function NormalizeView(view)
@@ -110,6 +111,15 @@ function ParchmentReader:GetBookModifiedTime(bookKey)
         and ParchmentReaderDB.customBooks[bookKey]
     if type(saved) ~= "table" then return nil end
     if ValidTimestamp(saved.modifiedAt) then return saved.modifiedAt end
+    if ValidTimestamp(saved.createdAt) then return saved.createdAt end
+    return nil
+end
+
+
+function ParchmentReader:GetBookCreatedTime(bookKey)
+    local saved = type(ParchmentReaderDB.customBooks) == "table"
+        and ParchmentReaderDB.customBooks[bookKey]
+    if type(saved) ~= "table" then return nil end
     if ValidTimestamp(saved.createdAt) then return saved.createdAt end
     return nil
 end

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.6.0 — 2026-11-14
+
+- Added a third sort order, **Recently added**. Choose it from the sort button next to the search field to list your newest books first.
+- **Recently added** uses the date a book was created, so editing, renaming, or moving a book does not change its place. Books without a saved creation date follow. It works in Library and Favorites together with collection and search filters, and **Recent** keeps its last-opened order.
+
+Existing books, collections, bookmarks, reading progress, settings, and unsaved editor drafts are preserved. The default order matches previous versions. No saved-data reset is required. One shared package includes every supported client manifest.
+
 ## 2.5.2 — 2026-11-10
 
 - In the **Gray UI** and **Forever** appearances, the current **Aa** content-search match is highlighted in dark red again instead of almost matching the text.
