@@ -171,6 +171,7 @@ end
 local LIBRARY_SORT_OPTIONS = {
     {mode = "title", label = "Title (A-Z)"},
     {mode = "modified", label = "Recently modified"},
+    {mode = "added", label = "Recently added"},
 }
 local LIBRARY_SORT_ROW_HEIGHT = 24
 
@@ -4251,23 +4252,24 @@ function ParchmentReader:RefreshBookList()
             end
         end
     else
-        local byModified = self:GetLibrarySortMode() == "modified"
+        local sortMode = self:GetLibrarySortMode()
+        local timeOf = sortMode == "modified" and self.GetBookModifiedTime
+            or sortMode == "added" and self.GetBookCreatedTime or nil
         for bookKey, bookData in pairs(self.books) do
             if view == "all" or self:IsFavoriteBook(bookKey) then
                 orderedBooks[#orderedBooks + 1] = {
                     key = bookKey,
                     data = bookData,
                     normalizedTitle = self:NormalizeSearchText(bookData.title),
-                    modifiedTime = byModified
-                        and self:GetBookModifiedTime(bookKey) or nil,
+                    sortTime = timeOf and timeOf(self, bookKey) or nil,
                 }
             end
         end
         table.sort(orderedBooks, function(a, b)
-            if byModified and a.modifiedTime ~= b.modifiedTime then
-                if not a.modifiedTime then return false end
-                if not b.modifiedTime then return true end
-                return a.modifiedTime > b.modifiedTime
+            if timeOf and a.sortTime ~= b.sortTime then
+                if not a.sortTime then return false end
+                if not b.sortTime then return true end
+                return a.sortTime > b.sortTime
             end
             return CompareNormalizedBookTitles(
                 a.data.title,

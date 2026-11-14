@@ -11,7 +11,7 @@ resizable window.
 - Recover deleted saved books and notes for 30 days through a quiet Trash window
   in Settings > General > Maintenance.
 - Switch between Library, Favorites, and the 20 most recently opened books.
-- Sort Library and Favorites by title or by most recently modified.
+- Sort Library and Favorites by title, by most recently modified, or by most recently added.
 - Search titles and collections by default, or enable the compact **Aa** scope
   to find a complete phrase in book content within the active collection.
 - Open a content result with Enter or a click, highlight the matching phrase,
@@ -90,13 +90,13 @@ client checks for this bounded change were waived by the owner.
 
 ## Downloads
 
-The latest published release, **2.5.2**, makes the current **Aa** search match
-visible again in the Gray UI and Forever appearances, replaces the empty box in
-the **Move To** scroll hint with arrows, and keeps the minimized floating icon and
-its menu in the dark Azeroth Glass look in every appearance. WoW Forever now uses
-the same CurseForge and Wago download as every other client. Existing books,
-collections, bookmarks, reading progress, settings, and unsaved editor drafts are
-preserved. All supported clients remain in the shared package.
+The latest published release, **2.6.0**, adds a third library sort order,
+**Recently added**, which lists your newest books first and keeps their place when
+you edit, rename, or move them. It builds on 2.5.2, which made the current **Aa**
+search match visible again in the Gray UI and Forever appearances and gave WoW
+Forever the same CurseForge and Wago download as every other client. Existing
+books, collections, bookmarks, reading progress, settings, and unsaved editor
+drafts are preserved. All supported clients remain in the shared package.
 
 - [CurseForge](https://www.curseforge.com/wow/addons/parchment-reader)
 - [Wago Addons](https://addons.wago.io/addons/parchment-reader)
@@ -130,8 +130,8 @@ manifest.
 - Use Library, Favorites, and Recent below the search field. Right-click a book
   to change its favorite status, edit it, or move it to another collection.
 - Right-click Recent to clear reading history after confirmation.
-- Use the sort button next to the search field to choose **Title (A-Z)** or
-  **Recently modified**. Recent keeps its last-opened order.
+- Use the sort button next to the search field to choose **Title (A-Z)**,
+  **Recently modified** or **Recently added**. Recent keeps its last-opened order.
 - Use **Move to Trash** from a book's context menu or
   editor, then use **Settings > General > Maintenance > Open Trash**. Inspect a deleted record and
   choose **Restore** or **Delete Permanently**; **Empty Trash** clears confirmed
@@ -224,6 +224,10 @@ reset is required.
 Version 2.5.2 is a visual fix release and the first single download that also
 covers WoW Forever. It preserves books, collections, bookmarks, reading progress,
 settings, and unsaved editor drafts; no saved-data reset is required.
+
+Version 2.6.0 preserves books, collections, bookmarks, reading progress,
+settings, and unsaved editor drafts. Sorting still defaults to title order, and
+Recently added only reads existing creation dates; no saved-data reset is required.
 
 ## License
 
