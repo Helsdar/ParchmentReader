@@ -585,7 +585,7 @@ function ParchmentReader:SaveBook()
 end
 
 
-function ParchmentReader:SaveCustomBook(oldKey, title, content, collection, baseline)
+function ParchmentReader:SaveCustomBook(oldKey, title, content, collection, baseline, options)
     if collection ~= nil then
         local found = false
         for _, name in ipairs(ParchmentReaderDB.collections or {}) do
@@ -632,7 +632,7 @@ function ParchmentReader:SaveCustomBook(oldKey, title, content, collection, base
             self:EndContentSearchNavigation(true)
             if rekeyed then
                 self.currentReadingOffset = self:ResolveReadingPosition(
-                    self:NormalizeLayoutText(content),
+                    self:NormalizeLayoutText(content, self:GetBookLineBreakMode(oldKey)),
                     self:GetSavedReadingPosition(oldKey)) or self.currentReadingOffset
             end
         elseif rekeyed and self.readerSearchNavigation
@@ -662,12 +662,22 @@ function ParchmentReader:SaveCustomBook(oldKey, title, content, collection, base
 
     ParchmentReaderDB.customBooks = savedBooks
     local now = time()
+
+    local lineBreakMode
+    if oldKey then
+
+        lineBreakMode = self:NormalizeLineBreakMode(
+            type(oldSaved) == "table" and oldSaved.lineBreaks or nil)
+    else
+        lineBreakMode = self:NormalizeLineBreakMode(options and options.lineBreaks)
+    end
     ParchmentReaderDB.customBooks[newKey] = {
         content    = content,
         collection = collection,
         createdAt  = createdAt or now,
         modifiedAt = now,
         revision = (type(oldSaved) == "table" and oldSaved.revision or 0) + 1,
+        lineBreaks = lineBreakMode == "preserve" and "preserve" or nil,
     }
 
 

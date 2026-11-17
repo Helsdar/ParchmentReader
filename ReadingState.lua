@@ -85,10 +85,29 @@ local function ReflowLongWrappedLines(text)
     return table.concat(output)
 end
 
-function ParchmentReader:NormalizeLayoutText(content)
+
+function ParchmentReader:NormalizeLineBreakMode(mode)
+    return mode == "preserve" and "preserve" or "auto"
+end
+
+function ParchmentReader:GetBookLineBreakMode(bookKey)
+    local savedBooks = ParchmentReaderDB and ParchmentReaderDB.customBooks
+    local saved = bookKey and savedBooks and savedBooks[bookKey]
+    return self:NormalizeLineBreakMode(type(saved) == "table" and saved.lineBreaks or nil)
+end
+
+function ParchmentReader:NormalizeLayoutText(content, lineBreakMode)
     local text = type(content) == "string" and content or ""
     text = text:gsub("\r\n", "\n"):gsub("\r", "\n")
+    if lineBreakMode == "preserve" then return text end
     return ReflowLongWrappedLines(text)
+end
+
+function ParchmentReader:GetBookLayoutText(bookKey)
+    local book = bookKey and self.books and self.books[bookKey]
+    return self:NormalizeLayoutText(
+        book and book.content,
+        self:GetBookLineBreakMode(bookKey))
 end
 
 function ParchmentReader:SnapReadingOffset(content, offset)
@@ -112,6 +131,7 @@ function ParchmentReader:BuildLayoutDescriptor(frame, book)
     return {
         bookKey = self.currentBook or "",
         contentRevision = self:GetContentRevision(book),
+        lineBreaks = self:GetBookLineBreakMode(self.currentBook),
         width = RoundMetric(frame.readerTextWidth or measureText:GetWidth()),
         height = RoundMetric(frame.contentScroll:GetHeight()),
         font = ParchmentReaderDB.fontName or "QuestFont",
@@ -124,6 +144,7 @@ end
 function ParchmentReader:BuildLayoutSignature(descriptor)
     return table.concat({
         descriptor.contentRevision,
+        descriptor.lineBreaks or "auto",
         descriptor.width,
         descriptor.height,
         descriptor.font,
@@ -141,6 +162,7 @@ function ParchmentReader:DescribeLayoutChange(previous, current)
     if not previous then return "initial-layout" end
     if previous.bookKey ~= current.bookKey then return "book-changed" end
     if previous.contentRevision ~= current.contentRevision then return "content-changed" end
+    if previous.lineBreaks ~= current.lineBreaks then return "line-breaks-changed" end
     if previous.width ~= current.width then return "width-changed" end
     if previous.height ~= current.height then return "height-changed" end
     if previous.font ~= current.font then return "font-changed" end
@@ -441,6 +463,41 @@ function ParchmentReader:RefreshBookmarkAnchor(content, bookmark, offset)
     bookmark.before = anchoredPosition.before
     bookmark.after = anchoredPosition.after
     bookmark.updatedAt = time()
+end
+
+
+
+function ParchmentReader:ReanchorReadingState(bookKey, oldContent, newContent)
+    if not ParchmentReaderDB or not bookKey
+        or type(oldContent) ~= "string" or type(newContent) ~= "string"
+    then
+        return
+    end
+
+    local function Reanchor(record, offset)
+        if offset == nil then return end
+        local anchored = BuildAnchoredPosition(newContent, offset)
+        record.offset = anchored.offset
+        record.progress = anchored.progress
+        record.contentLength = anchored.contentLength
+        record.before = anchored.before
+        record.after = anchored.after
+    end
+
+    local position = ParchmentReaderDB.bookPositions
+        and ParchmentReaderDB.bookPositions[bookKey]
+    if type(position) == "table" and position.version == 1 then
+        Reanchor(position, self:ResolveReadingPosition(oldContent, position))
+    end
+
+    local bookmarks = GetBookmarkList(bookKey, false)
+    if type(bookmarks) == "table" then
+        for _, bookmark in ipairs(bookmarks) do
+            if type(bookmark) == "table" and bookmark.version == 1 then
+                Reanchor(bookmark, self:ResolveBookmarkOffset(oldContent, bookmark))
+            end
+        end
+    end
 end
 
 function ParchmentReader:GetBookmarkExcerpt(content, bookmark, characterLimit, indicateContinuation)

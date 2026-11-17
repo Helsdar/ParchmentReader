@@ -425,6 +425,7 @@ ParchmentReader:RegisterLocale("enUS", {
     ["Title (A-Z)"] = "Title (A-Z)",
     ["Recently modified"] = "Recently modified",
     ["Recently added"] = "Recently added",
+    ["Keep Line Breaks"] = "Keep Line Breaks",
     ["Sort: %s"] = "Sort: %s",
     ["Recent is sorted by last opened"] = "Recent is sorted by last opened",
 })

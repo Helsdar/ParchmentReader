@@ -18,6 +18,8 @@ resizable window.
   move between occurrences, and return without replacing saved reading progress.
 - Read continuously with automatic position saving.
 - Group books into collections.
+- Keep the line breaks of poems, lists, and notes per book with **Keep Line Breaks**
+  in the book menu; other books keep joining hard-wrapped prose into paragraphs.
 - Add, rename, navigate, delete, and restore bookmarks, ordered by reading position.
 - Reopen the bookmark list at the selected bookmark. Repeated **+ Here** clicks
   at the same exact point select the existing bookmark and keep its name.
@@ -90,11 +92,12 @@ client checks for this bounded change were waived by the owner.
 
 ## Downloads
 
-The latest published release, **2.6.0**, adds a third library sort order,
-**Recently added**, which lists your newest books first and keeps their place when
-you edit, rename, or move them. It builds on 2.5.2, which made the current **Aa**
-search match visible again in the Gray UI and Forever appearances and gave WoW
-Forever the same CurseForge and Wago download as every other client. Existing
+The latest published release, **2.7.0**, adds **Keep Line Breaks** to the book
+menu, so poems, lists, and notes can show every line exactly as written, while
+other books keep joining hard-wrapped prose into paragraphs. New Quick Notes keep
+their line breaks automatically. It builds on 2.6.0, which added the **Recently
+added** sort order. WoW Forever uses the same CurseForge and Wago download as
+every other client. Existing
 books, collections, bookmarks, reading progress, settings, and unsaved editor
 drafts are preserved. All supported clients remain in the shared package.
 
@@ -128,7 +131,8 @@ manifest.
 - Drag the minimap icon to reposition it.
 - Use **+ Add Book** to create your first saved book.
 - Use Library, Favorites, and Recent below the search field. Right-click a book
-  to change its favorite status, edit it, or move it to another collection.
+  to change its favorite status, keep its line breaks, edit it, or move it to
+  another collection.
 - Right-click Recent to clear reading history after confirmation.
 - Use the sort button next to the search field to choose **Title (A-Z)**,
   **Recently modified** or **Recently added**. Recent keeps its last-opened order.
@@ -228,6 +232,10 @@ settings, and unsaved editor drafts; no saved-data reset is required.
 Version 2.6.0 preserves books, collections, bookmarks, reading progress,
 settings, and unsaved editor drafts. Sorting still defaults to title order, and
 Recently added only reads existing creation dates; no saved-data reset is required.
+
+Version 2.7.0 preserves books, collections, bookmarks, reading progress,
+settings, and unsaved editor drafts. Existing books keep their current layout
+until you choose Keep Line Breaks; no saved-data reset is required.
 
 ## License
 

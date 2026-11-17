@@ -1193,6 +1193,61 @@ function ParchmentReader:MoveBook(bookKey, targetCollection)
     return true, newKey
 end
 
+
+function ParchmentReader:SetBookLineBreakMode(bookKey, mode)
+    if mode ~= "preserve" and mode ~= "auto" then return false, "invalid" end
+    local book = bookKey and self.books[bookKey]
+    local savedBooks = ParchmentReaderDB.customBooks
+    local saved = savedBooks and savedBooks[bookKey]
+    if not book or not book.custom or saved == nil then return false, "missing" end
+    local savedContent = type(saved) == "table" and saved.content or saved
+    if type(savedContent) ~= "string" then return false, "invalid" end
+    if self:GetBookLineBreakMode(bookKey) == mode then return true, "unchanged" end
+
+    local frame = ParchmentReaderFrame
+    local isOpen = self.currentBook == bookKey
+    local readerShown = isOpen and frame and frame:IsShown()
+    if isOpen then
+
+        local navigation = self.readerSearchNavigation
+        if navigation and navigation.bookKey == bookKey then
+            self:EndContentSearchNavigation(true)
+        else
+            self:SyncReadingPosition()
+        end
+        self:StopReaderScrollAnimation()
+    end
+
+    local oldContent = self:GetBookLayoutText(bookKey)
+    if type(saved) ~= "table" then
+        local replacement = {content = saved, collection = book.collection}
+
+        for _, editor in ipairs({ParchmentReaderEditorFrame or false,
+            ParchmentReaderQuickNoteFrame or false})
+        do
+            local baseline = editor and editor.savedBookBaseline
+            if baseline and baseline.key == bookKey and baseline.saved == saved then
+                baseline.saved = replacement
+            end
+        end
+        saved = replacement
+        savedBooks[bookKey] = saved
+    end
+    saved.lineBreaks = mode == "preserve" and "preserve" or nil
+
+    self:ReanchorReadingState(bookKey, oldContent, self:GetBookLayoutText(bookKey))
+    self:InvalidateReaderLayoutCache(bookKey)
+    if readerShown then
+        self:UpdateReader("line-breaks-changed")
+    end
+    if ParchmentReaderDebugFrame and ParchmentReaderDebugFrame:IsShown()
+        and self.UpdateDebugInfo
+    then
+        self:UpdateDebugInfo()
+    end
+    return true, "changed"
+end
+
 function ParchmentReader:RenameCollection(oldName, newName)
     if not oldName or not newName or newName == "" then
         return false, "invalid"
@@ -1378,7 +1433,7 @@ function ParchmentReader:LoadBook(bookKey)
     self.currentBook = bookKey
     ParchmentReaderDB.selectedBook = bookKey
     local book = self.books[bookKey]
-    local layoutContent = self:NormalizeLayoutText(book.content)
+    local layoutContent = self:GetBookLayoutText(bookKey)
     local savedPosition = self:GetSavedReadingPosition(bookKey)
     local savedOffset = self:ResolveReadingPosition(layoutContent, savedPosition)
     local savedPage = ParchmentReaderDB.bookPages and ParchmentReaderDB.bookPages[bookKey] or 1

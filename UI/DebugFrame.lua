@@ -252,7 +252,7 @@ function ParchmentReader:UpdateDebugInfo()
     table.insert(info, string.format(
         L["Reading offset: %d"], self.currentReadingOffset or 0))
     local currentBook = self.currentBook and self.books[self.currentBook]
-    local normalizedContent = currentBook and self:NormalizeLayoutText(currentBook.content) or ""
+    local normalizedContent = currentBook and self:GetBookLayoutText(self.currentBook) or ""
     local progress = #normalizedContent > 0
         and ((self.currentReadingOffset or 0) / #normalizedContent) * 100
         or 0
