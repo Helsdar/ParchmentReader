@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.7.0 — 2026-11-17
+
+- Added **Keep Line Breaks** to the book menu. Right-click a book and choose it for poems, lists, or notes where every line ending matters; the book then shows each line exactly as written. Choose it again to return to flowing paragraphs.
+- Without this choice, long lines that were broken up when copied from a website or document are still joined into paragraphs, as before. The choice applies to one book at a time.
+- Switching keeps your reading position and bookmarks in place and does not change the book's place in **Recently modified**.
+- New **Quick Notes** keep their line breaks automatically, so pressing Enter after a long sentence starts a new line just as you typed it.
+
+Existing books, collections, bookmarks, reading progress, settings, and unsaved editor drafts are preserved, and existing books keep their current layout. No saved-data reset is required. One shared package includes every supported client manifest.
+
 ## 2.6.0 — 2026-11-14
 
 - Added a third sort order, **Recently added**. Choose it from the sort button next to the search field to list your newest books first.

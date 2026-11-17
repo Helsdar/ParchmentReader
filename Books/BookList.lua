@@ -23,7 +23,7 @@ BUILDING YOUR LIBRARY
 
 Choose Add Book at the bottom of the library to create a book. Give it a title, choose a collection if desired, paste or type the content, and save it.
 
-Right-click any book for its actions. You can edit its content, move it to another collection, or choose Move to Trash. The Edit Book window also offers Move to Trash. Only the saved version goes into Trash; unsaved editor changes are kept separately as a recoverable draft after explicit confirmation.
+Right-click any book for its actions. You can edit its content, move it to another collection, or choose Move to Trash. Choose Keep Line Breaks for poems, lists, or notes whose line endings matter; otherwise long hard-wrapped lines flow together as paragraphs. The Edit Book window also offers Move to Trash. Only the saved version goes into Trash; unsaved editor changes are kept separately as a recoverable draft after explicit confirmation.
 
 Open Settings, choose General, and use Open Trash under Maintenance to inspect deleted books and notes. Restore returns their saved text, dates, bookmarks, reading position and Favorite. Occupied titles receive a restored suffix; a missing collection falls back to No Collection. Restoring does not open the book or change reading history. Books stay in Trash for 30 days from deletion. Expired entries are removed when the addon is running or next loads. Delete Permanently and Empty Trash require confirmation and cannot be undone.
 

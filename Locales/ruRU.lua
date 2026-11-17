@@ -423,6 +423,7 @@ ParchmentReader:RegisterLocale("ruRU", {
     ["Title (A-Z)"] = "Название (А-Я)",
     ["Recently modified"] = "Недавно изменённые",
     ["Recently added"] = "Недавно добавленные",
+    ["Keep Line Breaks"] = "Сохранять переносы строк",
     ["Sort: %s"] = "Сортировка: %s",
     ["Recent is sorted by last opened"] = "Недавние упорядочены по последнему открытию",
 })

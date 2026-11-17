@@ -1296,7 +1296,8 @@ function ParchmentReader:UpdateReader(requestedReason)
         return
     end
 
-    local content = self:NormalizeLayoutText(book.content)
+    local content = self:NormalizeLayoutText(
+        book.content, self:GetBookLineBreakMode(self.currentBook))
     local searchNavigation = self.readerSearchNavigation
     if searchNavigation
         and (searchNavigation.bookKey ~= self.currentBook

@@ -582,7 +582,9 @@ function ParchmentReader:SaveQuickNote()
         self:AddCollection(QUICK_NOTE_COLLECTION)
     end
 
-    local ok, savedKey = self:SaveCustomBook(nil, title, content, collection)
+
+    local ok, savedKey = self:SaveCustomBook(nil, title, content, collection, nil,
+        {lineBreaks = "preserve"})
     if not ok then return end
     ParchmentReaderDB.lastQuickNote = savedKey
     if ParchmentReaderFrame then self:RefreshCollectionSelector() end

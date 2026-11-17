@@ -423,6 +423,7 @@ ParchmentReader:RegisterLocale("ptBR", {
     ["Title (A-Z)"] = "Título (A-Z)",
     ["Recently modified"] = "Modificados recentemente",
     ["Recently added"] = "Adicionados recentemente",
+    ["Keep Line Breaks"] = "Manter quebras de linha",
     ["Sort: %s"] = "Ordem: %s",
     ["Recent is sorted by last opened"] = "Recentes é ordenado pela última abertura",
 })

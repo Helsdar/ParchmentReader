@@ -1225,6 +1225,18 @@ local function GetBookMovePopover()
     return popover
 end
 
+local BOOK_MENU_TEXT_INSET = 8
+local BOOK_MENU_SELECTED_INSET = 15
+
+local function SetBookMenuLineBreakState(row, keep)
+    PRUI.SetButtonTextColor(row, keep and Theme:Get("accent", "gold") or nil)
+    row.label:ClearAllPoints()
+    row.label:SetPoint("LEFT", row.pruiContent, "LEFT",
+        keep and BOOK_MENU_SELECTED_INSET or BOOK_MENU_TEXT_INSET, 0)
+    row.label:SetPoint("RIGHT", row.pruiContent, "RIGHT", -BOOK_MENU_TEXT_INSET, 0)
+    row.selectedRail:SetShown(keep)
+end
+
 local function GetBookContextMenu()
     local menu = _G.ParchmentReaderBookContextMenu
     if menu then return menu end
@@ -1234,7 +1246,7 @@ local function GetBookContextMenu()
         color = Theme:Get("bg", "popover"),
         shadow = false,
     })
-    menu:SetSize(206, 111)
+    menu:SetSize(206, 134)
     PRUI.SetAddonFrameLayer(menu, PRUI.ADDON_FRAME_LEVELS.POPOVER)
     menu:SetClampedToScreen(true)
     menu:EnableMouse(true)
@@ -1256,13 +1268,29 @@ local function GetBookContextMenu()
     menu.favoriteButton.label:SetPoint(
         "RIGHT", menu.favoriteButton.pruiContent, "RIGHT", -8, 0)
 
+    menu.lineBreakButton = PRUI.Button(menu, L["Keep Line Breaks"], {
+        width = 196,
+        height = 23,
+        justifyH = "LEFT",
+        skinRole = "row",
+    })
+    menu.lineBreakButton:SetPoint("TOPLEFT", menu.favoriteButton, "BOTTOMLEFT", 0, 0)
+
+    local lineBreakRail = menu.lineBreakButton.pruiContent:CreateTexture(nil, "ARTWORK")
+    lineBreakRail:SetPoint("TOPLEFT", menu.lineBreakButton.pruiContent, "TOPLEFT", 4, -4)
+    lineBreakRail:SetPoint("BOTTOMLEFT", menu.lineBreakButton.pruiContent, "BOTTOMLEFT", 4, 4)
+    lineBreakRail:SetWidth(2)
+    Theme:BindColor(lineBreakRail, "SetColorTexture", Theme:Get("accent", "gold"))
+    menu.lineBreakButton.selectedRail = lineBreakRail
+    SetBookMenuLineBreakState(menu.lineBreakButton, false)
+
     menu.editButton = PRUI.Button(menu, L["Edit Book"], {
         width = 196,
         height = 23,
         justifyH = "LEFT",
         skinRole = "row",
     })
-    menu.editButton:SetPoint("TOPLEFT", menu.favoriteButton, "BOTTOMLEFT", 0, 0)
+    menu.editButton:SetPoint("TOPLEFT", menu.lineBreakButton, "BOTTOMLEFT", 0, 0)
     menu.editButton.label:ClearAllPoints()
     menu.editButton.label:SetPoint("LEFT", menu.editButton.pruiContent, "LEFT", 8, 0)
     menu.editButton.label:SetPoint("RIGHT", menu.editButton.pruiContent, "RIGHT", -8, 0)
@@ -1288,7 +1316,9 @@ local function GetBookContextMenu()
     })
     menu.trashButton:SetPoint("TOPLEFT", menu.moveButton, "BOTTOMLEFT", 0, -9)
 
-    for _, button in ipairs({menu.favoriteButton, menu.editButton, menu.moveButton, menu.trashButton}) do
+    for _, button in ipairs({menu.favoriteButton, menu.lineBreakButton,
+        menu.editButton, menu.moveButton, menu.trashButton})
+    do
         button.pruiHoverBorderColor = Theme:Get("state", "clear")
         button.pruiSelectedBorderColor = Theme:Get("state", "clear")
         PRUI.SetButtonBorderColor(button, Theme:Get("state", "clear"))
@@ -1312,6 +1342,13 @@ local function GetBookContextMenu()
         if not ParchmentReader.books[bookKey] then return end
         ParchmentReader:ToggleFavoriteBook(bookKey)
         ParchmentReader:RefreshBookList()
+    end)
+    menu.lineBreakButton:SetScript("OnClick", function()
+        local bookKey = menu.bookKey
+        menu:Hide()
+        if not ParchmentReader.books[bookKey] then return end
+        local keep = ParchmentReader:GetBookLineBreakMode(bookKey) == "preserve"
+        ParchmentReader:SetBookLineBreakMode(bookKey, keep and "auto" or "preserve")
     end)
     menu.moveButton:SetScript("OnClick", function(button)
         local popover = GetBookMovePopover()
@@ -1341,11 +1378,15 @@ local function GetBookContextMenu()
 end
 
 local function SizeBookContextMenu(menu)
-    local buttons = {menu.favoriteButton, menu.editButton, menu.moveButton, menu.trashButton}
+    local buttons = {menu.favoriteButton, menu.lineBreakButton,
+        menu.editButton, menu.moveButton, menu.trashButton}
     local textWidth = 0
     for _, button in ipairs(buttons) do
         menu.labelMeasure:SetText(button.label:GetText())
-        textWidth = math.max(textWidth, menu.labelMeasure:GetStringWidth())
+
+        local extra = button == menu.lineBreakButton
+            and BOOK_MENU_SELECTED_INSET - BOOK_MENU_TEXT_INSET or 0
+        textWidth = math.max(textWidth, menu.labelMeasure:GetStringWidth() + extra)
     end
 
     local width = Clamp(math.ceil(textWidth) + 26, 144, 260)
@@ -1367,6 +1408,8 @@ local function ShowBookContextMenu(bookKey, anchor)
     menu.bookKey = bookKey
     menu.favoriteButton:SetText(ParchmentReader:IsFavoriteBook(bookKey)
         and L["Remove from Favorites"] or L["Add to Favorites"])
+    SetBookMenuLineBreakState(menu.lineBreakButton,
+        ParchmentReader:GetBookLineBreakMode(bookKey) == "preserve")
     SizeBookContextMenu(menu)
     menu.owner = anchor
     menu:ClearAllPoints()
